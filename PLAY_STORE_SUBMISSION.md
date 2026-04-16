@@ -9,7 +9,7 @@ Source page:
 - ibnu-hafidz-vue-frontend/public/privacy-policy.html
 
 ## 2. App Name
-Ibnu Hafidz
+Sistem Absensi Ibnu Hafidz
 
 ## 3. Short Description
 Absensi, jadwal, halaqoh, dan rekap internal Pondok Ibnu Hafidz.
@@ -72,6 +72,7 @@ Version 1.0.0
 - Statistik santri dan guru
 - Fitur halaqoh lengkap
 - Export laporan PDF dan Excel
+- Dukungan offline cache dan auto sync
 - Tampilan mobile yang lebih rapi dan modern
 
 ## 11. Production API Configuration
@@ -80,3 +81,20 @@ The Flutter app is now configured so that release builds default to:
 https://beta.ibnuhafidz.ponpes.id/api
 
 For local or custom builds you can override the host with compile-time variables if needed.
+
+## 12. Deployment Readiness Status
+Already prepared:
+- privacy policy page
+- app branding and launcher icon
+- beta API base URL
+- offline cache and auto sync
+- export flows
+- installable APK builds
+
+Still required before final Play Store release:
+- install Android cmdline-tools and accept SDK licenses on the build machine
+- final unique Android package name
+- real upload keystore and release signing config
+- final Android App Bundle upload
+- final store screenshots and listing completion
+- closed testing verification on the production-like environment
