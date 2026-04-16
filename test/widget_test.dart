@@ -5,10 +5,15 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ibnu_hafidz_flutter/core/network/api_client.dart';
+import 'package:ibnu_hafidz_flutter/features/auth/auth_controller.dart';
+import 'package:ibnu_hafidz_flutter/features/home/home_shell.dart';
+import 'package:ibnu_hafidz_flutter/features/settings/app_settings_controller.dart';
 import 'package:ibnu_hafidz_flutter/main.dart';
 
 void main() {
@@ -39,5 +44,67 @@ void main() {
 
     expect(find.text('Selamat Datang'), findsOneWidget);
     expect(find.text('Masuk'), findsOneWidget);
+  });
+
+  testWidgets('hides stats tab when user lacks stats permissions',
+      (WidgetTester tester) async {
+    final auth = AuthController()
+      ..isLoading = false
+      ..isAuthenticated = true
+      ..user = {
+        'name': 'Guru',
+        'roles': [
+          {'name': 'teacher', 'permissions': []}
+        ],
+      };
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AuthController>.value(value: auth),
+          ChangeNotifierProvider<AppSettingsController>(
+            create: (_) => AppSettingsController(),
+          ),
+        ],
+        child: const MaterialApp(home: HomeShell()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Stats'), findsNothing);
+    expect(find.byType(NavigationBar), findsNothing);
+  });
+
+  testWidgets('shows stats tab when user has stats permission',
+      (WidgetTester tester) async {
+    final auth = AuthController()
+      ..isLoading = false
+      ..isAuthenticated = true
+      ..user = {
+        'name': 'Admin',
+        'roles': [
+          {
+            'name': 'teacher',
+            'permissions': [
+              {'name': 'absensi.view'}
+            ]
+          }
+        ],
+      };
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AuthController>.value(value: auth),
+          ChangeNotifierProvider<AppSettingsController>(
+            create: (_) => AppSettingsController(),
+          ),
+        ],
+        child: const MaterialApp(home: HomeShell()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Stats'), findsOneWidget);
   });
 }

@@ -16,11 +16,47 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
-  bool _isSuperAdmin(Map<String, dynamic>? user) {
-    final roles = ((user?['roles'] as List?) ?? [])
+  List<String> _roleNames(Map<String, dynamic>? user) {
+    return ((user?['roles'] as List?) ?? [])
         .map((role) => (role['name'] ?? '').toString().toLowerCase())
         .toList();
-    return roles.contains('super_admin');
+  }
+
+  List<String> _permissionNames(Map<String, dynamic>? user) {
+    final roles = (user?['roles'] as List?) ?? [];
+    final permissions = <String>[];
+
+    for (final role in roles) {
+      final items = (role['permissions'] as List?) ?? [];
+      for (final permission in items) {
+        final name = (permission['name'] ?? '').toString().toLowerCase();
+        if (name.isNotEmpty) permissions.add(name);
+      }
+    }
+
+    return permissions;
+  }
+
+  bool _isSuperAdmin(Map<String, dynamic>? user) {
+    return _roleNames(user).contains('super_admin');
+  }
+
+  bool _canViewStats(Map<String, dynamic>? user) {
+    final roles = _roleNames(user);
+    if (roles.any(
+      (role) => ['super_admin', 'admin', 'staff', 'tim_presensi'].contains(role),
+    )) {
+      return true;
+    }
+
+    final permissions = _permissionNames(user);
+    return permissions.any(
+      (permission) => [
+        'absensi.view',
+        'absensi_diniyyah.view',
+        'halaqoh.view',
+      ].contains(permission),
+    );
   }
 
   @override
@@ -28,10 +64,27 @@ class _HomeShellState extends State<HomeShell> {
     final auth = context.watch<AuthController>();
     final userName = auth.user?['name']?.toString() ?? 'User';
     final isSuperAdmin = _isSuperAdmin(auth.user);
+    final canViewStats = _canViewStats(auth.user);
     final pages = [
       const JadwalScreen(),
-      const StatsScreen(),
+      if (canViewStats) const StatsScreen(),
       if (isSuperAdmin) const SettingsScreen(),
+    ];
+    final destinations = [
+      const NavigationDestination(
+        icon: Icon(Icons.calendar_month_rounded),
+        label: 'Jadwal',
+      ),
+      if (canViewStats)
+        const NavigationDestination(
+          icon: Icon(Icons.query_stats_rounded),
+          label: 'Stats',
+        ),
+      if (isSuperAdmin)
+        const NavigationDestination(
+          icon: Icon(Icons.tune_rounded),
+          label: 'Control',
+        ),
     ];
     final safeIndex = _index >= pages.length ? 0 : _index;
 
@@ -100,25 +153,13 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: safeIndex,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.calendar_month_rounded),
-            label: 'Jadwal',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.query_stats_rounded),
-            label: 'Stats',
-          ),
-          if (isSuperAdmin)
-            const NavigationDestination(
-              icon: Icon(Icons.tune_rounded),
-              label: 'Control',
+      bottomNavigationBar: destinations.length < 2
+          ? null
+          : NavigationBar(
+              selectedIndex: safeIndex,
+              onDestinationSelected: (i) => setState(() => _index = i),
+              destinations: destinations,
             ),
-        ],
-      ),
     );
   }
 }

@@ -141,11 +141,30 @@ class _JadwalScreenState extends State<JadwalScreen> {
   }
 
   bool _canOpenTeacherAttendance(Map<String, dynamic> item) {
+    final user = context.read<AuthController>().user;
+    if (user == null) return false;
+
     final roles = _roleNames();
     final permissions = _permissionNames().map((p) => p.toLowerCase()).toList();
 
-    if (roles
-        .any((r) => ['super_admin', 'admin', 'tim_presensi'].contains(r))) {
+    if (roles.any(
+      (r) => ['super_admin', 'admin', 'staff', 'tim_presensi'].contains(r),
+    )) {
+      return true;
+    }
+
+    final userId = user['id'];
+    final assignedId = item['assignment']?['teacher']?['id'];
+    if (userId != null && userId == assignedId) {
+      return true;
+    }
+
+    final substituteId = item['substitute_teacher']?['id'];
+    final rawDate = item['substitute_date']?.toString();
+    final substituteMatchesDate = rawDate == null ||
+        rawDate.isEmpty ||
+        rawDate.split('T').first == _selectedDate;
+    if (userId != null && userId == substituteId && substituteMatchesDate) {
       return true;
     }
 

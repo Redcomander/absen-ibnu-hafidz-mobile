@@ -161,12 +161,59 @@ class _StatsScreenState extends State<StatsScreen> {
     }
   }
 
+  List<String> _roleNames() {
+    final user = context.read<AuthController>().user;
+    return ((user?['roles'] as List?) ?? [])
+        .map((role) => (role['name'] ?? '').toString().toLowerCase())
+        .toList();
+  }
+
+  List<String> _permissionNames() {
+    final user = context.read<AuthController>().user;
+    final roles = (user?['roles'] as List?) ?? [];
+    final permissions = <String>[];
+
+    for (final role in roles) {
+      final items = (role['permissions'] as List?) ?? [];
+      for (final permission in items) {
+        final name = (permission['name'] ?? '').toString().toLowerCase();
+        if (name.isNotEmpty) permissions.add(name);
+      }
+    }
+
+    return permissions;
+  }
+
+  bool _isManager() {
+    final roles = _roleNames();
+    return roles.any(
+      (role) => ['super_admin', 'admin', 'staff', 'tim_presensi'].contains(role),
+    );
+  }
+
+  bool _canViewFormalAbsensi() {
+    if (_isManager()) return true;
+    return _permissionNames().contains('absensi.view');
+  }
+
+  bool _canViewDiniyyahAbsensi() {
+    if (_isManager()) return true;
+    return _permissionNames().contains('absensi_diniyyah.view');
+  }
+
+  bool _canViewHalaqohStats() {
+    if (_isManager()) return true;
+    return _permissionNames().contains('halaqoh.view');
+  }
+
   List<ButtonSegment<String>> _typeSegments(bool showRamadhan) {
     return [
-      const ButtonSegment(value: 'formal', label: Text('Formal')),
-      if (showRamadhan)
+      if (_canViewFormalAbsensi())
+        const ButtonSegment(value: 'formal', label: Text('Formal')),
+      if (showRamadhan && _canViewFormalAbsensi())
         const ButtonSegment(value: 'ramadhan', label: Text('Ramadhan')),
-      const ButtonSegment(value: 'diniyyah', label: Text('Diniyyah')),
+      if (_canViewDiniyyahAbsensi())
+        const ButtonSegment(value: 'diniyyah', label: Text('Diniyyah')),
     ];
   }
 
@@ -350,6 +397,29 @@ class _StatsScreenState extends State<StatsScreen> {
   Widget build(BuildContext context) {
     final showRamadhan =
         context.watch<AppSettingsController>().isRamadhanTabEnabled;
+    final canViewAbsensi =
+        _canViewFormalAbsensi() || _canViewDiniyyahAbsensi();
+    final canViewHalaqoh = _canViewHalaqohStats();
+    final typeSegments = _typeSegments(showRamadhan);
+
+    if (!canViewAbsensi && canViewHalaqoh && _module != 'halaqoh') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _module = 'halaqoh');
+      });
+    }
+
+    if (!canViewHalaqoh && _module == 'halaqoh') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _module = 'absensi');
+      });
+    }
+
+    if (typeSegments.isNotEmpty &&
+        !typeSegments.any((segment) => segment.value == _type)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _type = typeSegments.first.value);
+      });
+    }
 
     if (!showRamadhan && _type == 'ramadhan') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -384,15 +454,29 @@ class _StatsScreenState extends State<StatsScreen> {
     }).toList();
 
     final moduleSelector = SegmentedButton<String>(
-      segments: const [
-        ButtonSegment(value: 'absensi', label: Text('Absensi')),
-        ButtonSegment(value: 'halaqoh', label: Text('Halaqoh')),
+      segments: [
+        if (canViewAbsensi)
+          const ButtonSegment(value: 'absensi', label: Text('Absensi')),
+        if (canViewHalaqoh)
+          const ButtonSegment(value: 'halaqoh', label: Text('Halaqoh')),
       ],
       selected: {_module},
       onSelectionChanged: (value) {
         setState(() => _module = value.first);
       },
     );
+
+    if (!canViewAbsensi && !canViewHalaqoh) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Akun ini belum memiliki akses ke halaman statistik.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
 
     if (_module == 'halaqoh') {
       return Column(
@@ -419,14 +503,15 @@ class _StatsScreenState extends State<StatsScreen> {
         children: [
           moduleSelector,
           const SizedBox(height: 12),
-          SegmentedButton<String>(
-            segments: _typeSegments(showRamadhan),
-            selected: {_type},
-            onSelectionChanged: (value) {
-              setState(() => _type = value.first);
-              _load(resetHistory: true);
-            },
-          ),
+          if (typeSegments.length > 1)
+            SegmentedButton<String>(
+              segments: typeSegments,
+              selected: {_type},
+              onSelectionChanged: (value) {
+                setState(() => _type = value.first);
+                _load(resetHistory: true);
+              },
+            ),
           const SizedBox(height: 12),
           SegmentedButton<String>(
             segments: _scopeSegments,
