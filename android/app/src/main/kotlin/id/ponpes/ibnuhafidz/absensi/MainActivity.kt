@@ -1,4 +1,4 @@
-package com.example.ibnu_hafidz_flutter
+package id.ponpes.ibnuhafidz.absensi
 
 import io.flutter.embedding.android.FlutterActivity
 

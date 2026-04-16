@@ -90,10 +90,11 @@ Already prepared:
 - offline cache and auto sync
 - export flows
 - installable APK builds
+- finalized Android package name: id.ponpes.ibnuhafidz.absensi
+- versioned APK generation for release builds
 
 Still required before final Play Store release:
 - install Android cmdline-tools and accept SDK licenses on the build machine
-- final unique Android package name
 - real upload keystore and release signing config
 - final Android App Bundle upload
 - final store screenshots and listing completion
