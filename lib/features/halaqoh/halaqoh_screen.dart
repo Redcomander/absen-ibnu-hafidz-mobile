@@ -1110,12 +1110,17 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
 
   Widget _buildGroupCard(Map<String, dynamic> group) {
     final teacherId = _asInt(group['teacher_id']);
+    final currentUserId = _asInt(context.read<AuthController>().user?['id']);
     final assignments = _asMapList(group['assignments']);
     final access = _accessForTeacher(teacherId);
     final badgeInfo = _badgeForTeacher(teacherId);
     final studentBadges = _asMapList(badgeInfo['student_attendance']);
     final teacherAttendance = _asMap(badgeInfo['teacher_attendance']);
     final subs = _substitutesForTeacher(teacherId);
+    final canOpenStudentAttendance = access['can_access_attendance'] == true;
+    final canOpenTeacherAttendance = access['can_manage'] == true ||
+        access['is_substitute'] == true ||
+        currentUserId == teacherId;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1261,13 +1266,13 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (access['can_access_attendance'] == true)
+                if (canOpenStudentAttendance)
                   FilledButton.tonalIcon(
                     onPressed: () => _openStudentAttendance(group),
                     icon: const Icon(Icons.fact_check_outlined),
                     label: const Text('Absen santri'),
                   ),
-                if (access['can_manage'] == true)
+                if (canOpenTeacherAttendance)
                   FilledButton.tonalIcon(
                     onPressed: () => _openTeacherAttendance(group),
                     icon: const Icon(Icons.person_pin_circle_outlined),

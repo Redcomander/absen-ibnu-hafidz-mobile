@@ -145,8 +145,6 @@ class _JadwalScreenState extends State<JadwalScreen> {
     if (user == null) return false;
 
     final roles = _roleNames();
-    final permissions = _permissionNames().map((p) => p.toLowerCase()).toList();
-
     if (roles.any(
       (r) => ['super_admin', 'admin', 'staff', 'tim_presensi'].contains(r),
     )) {
@@ -155,25 +153,13 @@ class _JadwalScreenState extends State<JadwalScreen> {
 
     final userId = user['id'];
     final assignedId = item['assignment']?['teacher']?['id'];
-    if (userId != null && userId == assignedId) {
-      return true;
-    }
+    final isAssigned = userId != null && userId == assignedId;
 
     final substituteId = item['substitute_teacher']?['id'];
-    final rawDate = item['substitute_date']?.toString();
-    final substituteMatchesDate = rawDate == null ||
-        rawDate.isEmpty ||
-        rawDate.split('T').first == _selectedDate;
-    if (userId != null && userId == substituteId && substituteMatchesDate) {
-      return true;
-    }
+    final isSubstitute =
+        userId != null && userId == substituteId && _isSubstituteActive(item);
 
-    return permissions.any(
-      (p) =>
-          p.contains('attendance') ||
-          p.contains('teacher_attendance') ||
-          p.contains('teacher-attendance'),
-    );
+    return isAssigned || isSubstitute;
   }
 
   bool _canOpenSubstitute(Map<String, dynamic> item) {
