@@ -118,10 +118,21 @@ class _JadwalScreenState extends State<JadwalScreen> {
     if (_isManager()) return true;
 
     final userId = user['id'];
-    final assignedId = item['assignment']?['teacher']?['id'];
-    final substituteId = item['substitute_teacher']?['id'];
-    final isAssigned =
-        userId != null && (userId == assignedId || userId == substituteId);
+    final assignment = _asMap(item['assignment']);
+    final teacher = _asMap(assignment['teacher']);
+    final substituteTeacher = _asMap(item['substitute_teacher']);
+
+    final assignedId = _asInt(teacher['id']);
+    final substituteId = _asInt(substituteTeacher['id']);
+    final currentUserId = _asInt(userId);
+
+    final isAssignedTeacher =
+      currentUserId != 0 && assignedId != 0 && currentUserId == assignedId;
+    final isActiveSubstitute = currentUserId != 0 &&
+      substituteId != 0 &&
+      currentUserId == substituteId &&
+      _isSubstituteActive(item);
+    final isAssigned = isAssignedTeacher || isActiveSubstitute;
 
     if (!isAssigned) return false;
     if (_selectedDate != _todayString()) return false;
@@ -331,6 +342,12 @@ class _JadwalScreenState extends State<JadwalScreen> {
     return value is Map
         ? Map<String, dynamic>.from(value)
         : <String, dynamic>{};
+  }
+
+  int _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   bool _isSubstituteActive(Map<String, dynamic> item) {
