@@ -1,7 +1,7 @@
 name: ibnu_hafidz_flutter
 description: Mobile frontend for Ibnu Hafidz backend (Flutter)
 publish_to: "none"
-version: 1.0.0+11
+version: 1.0.0+12
 
 environment:
   sdk: ">=3.11.0 <4.0.0"
@@ -19,6 +19,8 @@ dependencies:
   intl: ^0.20.3
   connectivity_plus: ^7.1.1
   path_provider: ^2.1.5
+  package_info_plus: 8.3.1
+  crypto: ^3.0.7
   sqflite: 2.4.2
   workmanager: 0.9.0+3
 

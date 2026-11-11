@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'core/theme/app_theme.dart';
+import 'core/updates/app_update_controller.dart';
+import 'core/updates/update_gate.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/login_screen.dart';
 import 'features/home/home_shell.dart';
@@ -21,6 +23,7 @@ class IbnuHafidzApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AppUpdateController()),
         ChangeNotifierProvider(create: (_) => AuthController()..init()),
         ChangeNotifierProxyProvider<AuthController, UserPreferences>(
           create: (_) => UserPreferences(),
@@ -63,7 +66,7 @@ class IbnuHafidzApp extends StatelessWidget {
                     preferences.textScale,
               ),
             ),
-            child: AppLockGate(child: child!),
+            child: AppLockGate(child: AppUpdateGate(child: child!)),
           ),
           home: const RootGate(),
         ),

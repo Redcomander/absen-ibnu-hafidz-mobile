@@ -1,0 +1,50 @@
+﻿# Pembaruan APK dari dalam aplikasi
+
+Updater ada mulai build 12. Build 11 dan sebelumnya perlu diperbarui secara
+manual satu kali tanpa menghapus aplikasi/data. Rilis berikutnya dapat dikelola
+oleh Super Admin dari web.
+
+## Modul
+
+- `lib/core/updates/app_update_model.dart`: metadata dan kebijakan versionCode.
+- `lib/core/updates/app_update_service.dart`: HTTPS allowlist, streaming unduhan,
+  pembatalan, batas ukuran, SHA-256, penyimpanan cache dan komunikasi Android.
+- `lib/core/updates/app_update_controller.dart`: deduplikasi, throttle lima menit,
+  kebijakan mandatory yang disimpan, lifecycle dan status unduh/installer.
+- `lib/core/updates/update_gate.dart`: UI Indonesia, opsional/wajib dan tombol
+  Periksa Pembaruan pada Pengaturan. Tidak mengganti autentikasi/offline queue.
+- `AppUpdateInstaller.kt`: PackageManager, signer/build/hash yang cocok,
+  FileProvider terbatas dan installer OS. Membuka installer bukan bukti berhasil.
+
+`package_info_plus` 8.3.1 dipilih untuk AGP 8.11.1 yang sudah ada. Versi 9/10
+memerlukan AGP >=8.12.1. `crypto` menangani SHA-256; tidak memakai penyimpanan
+umum, root atau instalasi diam-diam.
+
+## Build
+
+Pilih key yang sama dengan instalasi lama melalui `IBNU_KEYSTORE_PATH`,
+`IBNU_KEYSTORE_PASSWORD`, `IBNU_KEY_ALIAS`, `IBNU_KEY_PASSWORD`. Jangan commit
+file key atau nilainya. Build release tanpa pilihan key eksplisit ditolak.
+
+```sh
+flutter pub get
+flutter build apk --release --build-name=1.1.0 --build-number=13 \
+  --dart-define=APP_BASE_URL=https://ibnuhafidz.ponpes.id \
+  --dart-define=APP_UPDATE_TRUSTED_HOSTS=ibnuhafidz.ponpes.id
+```
+
+Gunakan `build/app/outputs/apk/release/app-release.apk` untuk diunggah.
+APK debug/profile debuggable ditolak backend. APK bootstrap kompatibilitas
+mempertahankan key historis workspace, bukan key produksi baru. Jangan mengganti
+sertifikat tanpa rencana migrasi/rotasi Android yang terpisah.
+
+## Pengujian
+
+Suite Flutter: 90 tes lulus, termasuk 11 tes pembaruan. Uji perangkat nyata tetap
+mencakup izin pemasangan, tombol back pada mandatory, pembatalan installer dan
+pemeriksaan data/antrean setelah upgrade. Gunakan 12 → 13 untuk perangkat pengguna
+saat ini. Contoh 1.0.0+1 → 1.1.0+2 hanya untuk perangkat uji bersih dengan kode
+updater di kedua APK dan key yang sama.
+
+Panduan backend, migrasi 002, cPanel, kebijakan minimum dan checklist lengkap
+tersedia pada repository backend: `MOBILE_APP_RELEASES.md`.

@@ -46,3 +46,6 @@ app.*.map.json
 
 # Kotlin compiler working files
 /android/.kotlin/
+
+# Local plugin build caches
+**/.gradle/

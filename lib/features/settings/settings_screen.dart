@@ -8,6 +8,7 @@ import 'app_settings_controller.dart';
 import 'user_preferences.dart';
 import 'storage_screen.dart';
 import '../help/help_screen.dart';
+import '../../core/updates/update_gate.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -69,6 +70,7 @@ class SettingsScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
+        const CheckUpdatesTile(),
         Card(
           margin: const EdgeInsets.only(bottom: 14),
           child: Column(
