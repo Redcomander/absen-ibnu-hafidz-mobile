@@ -1,30 +1,40 @@
 name: ibnu_hafidz_flutter
 description: Mobile frontend for Ibnu Hafidz backend (Flutter)
 publish_to: "none"
-version: 1.0.0+1
+version: 1.0.0+9
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
+  sdk: ">=3.11.0 <4.0.0"
+  flutter: ">=3.47.9"
 
 dependencies:
   flutter:
     sdk: flutter
+  ibnu_schedule_alerts:
+    path: packages/ibnu_schedule_alerts
   cupertino_icons: ^1.0.8
   http: ^1.2.2
   provider: ^6.1.2
   shared_preferences: ^2.3.2
-  intl: ^0.19.0
+  intl: ^0.20.3
   connectivity_plus: ^7.1.1
   path_provider: ^2.1.5
+  sqflite: 2.4.2
+  workmanager: 0.9.0+3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
+  sqflite_common_ffi: ^2.4.0+3
 
 flutter:
   uses-material-design: true
+  fonts:
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans.ttf
   assets:
     - assets/branding/favicon.png
 

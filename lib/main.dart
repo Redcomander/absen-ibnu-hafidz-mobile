@@ -20,8 +20,12 @@ class IbnuHafidzApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthController()..init()),
-        ChangeNotifierProvider(
+        ChangeNotifierProxyProvider<AuthController, AppSettingsController>(
           create: (_) => AppSettingsController()..init(),
+          update: (_, auth, settings) {
+            settings!.bindAccount(auth);
+            return settings;
+          },
         ),
       ],
       child: MaterialApp(

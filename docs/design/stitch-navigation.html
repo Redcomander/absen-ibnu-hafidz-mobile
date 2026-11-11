@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+
+<html lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=390, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Jadwal Mengajar - Ibnu Hafidz</title>
+<!-- Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container-low": "#ebf6f0",
+            "secondary": "#4b635a",
+            "on-tertiary-fixed": "#251a00",
+            "outline-variant": "#c0c8c4",
+            "tertiary-container": "#483400",
+            "on-error": "#ffffff",
+            "on-error-container": "#93000a",
+            "on-surface": "#141e1a",
+            "primary": "#002820",
+            "surface-container-highest": "#dae5df",
+            "surface": "#F7F7F0",
+            "surface-container-lowest": "#ffffff",
+            "secondary-container": "#cde9dc",
+            "on-secondary-fixed": "#072018",
+            "on-secondary-fixed-variant": "#344c43",
+            "inverse-primary": "#a4cfc3",
+            "on-background": "#141e1a",
+            "secondary-fixed": "#cde9dc",
+            "inverse-surface": "#28332e",
+            "on-primary": "#ffffff",
+            "on-surface-variant": "#414846",
+            "on-primary-container": "#7fa99d",
+            "tertiary": "#2d2000",
+            "surface-bright": "#f1fcf5",
+            "tertiary-fixed-dim": "#e6c276",
+            "error-container": "#ffdad6",
+            "secondary-fixed-dim": "#b2ccc1",
+            "on-secondary-container": "#516a60",
+            "surface-container": "#e5f1ea",
+            "primary-fixed-dim": "#a4cfc3",
+            "outline": "#717976",
+            "inverse-on-surface": "#e8f3ed",
+            "primary-fixed": "#c0ecde",
+            "on-tertiary-fixed-variant": "#5b4300",
+            "surface-variant": "#dae5df",
+            "error": "#ba1a1a",
+            "on-primary-fixed": "#00201a",
+            "on-primary-fixed-variant": "#254e44",
+            "on-secondary": "#ffffff",
+            "on-tertiary": "#ffffff",
+            "surface-tint": "#3e665c",
+            "tertiary-fixed": "#ffdf9d",
+            "surface-container-high": "#e0ebe4",
+            "primary-container": "#143E35",
+            "on-tertiary-container": "#bd9c54",
+            "background": "#F7F7F0",
+            "surface-dim": "#d1ddd6",
+            "pesantren-gold": "#D8B56A",
+            "pesantren-green": "#143E35",
+            "pesantren-sage": "#8CA89E",
+            "pesantren-sage-light": "#9BB3A8"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "2xl": "1.25rem",
+            "3xl": "1.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-xl": "2rem",
+            "space-md": "1rem",
+            "space-lg": "1.5rem",
+            "space-xs": "0.25rem",
+            "margin": "1.25rem",
+            "gutter": "1rem",
+            "space-sm": "0.5rem"
+          },
+          "fontFamily": {
+            "headline-lg": ["Plus Jakarta Sans"],
+            "headline-md": ["Plus Jakarta Sans"],
+            "label-md": ["Plus Jakarta Sans"],
+            "label-lg": ["Plus Jakarta Sans"],
+            "label-sm": ["Plus Jakarta Sans"],
+            "body-sm": ["Plus Jakarta Sans"],
+            "headline-lg-mobile": ["Plus Jakarta Sans"],
+            "body-md": ["Plus Jakarta Sans"],
+            "body-lg": ["Plus Jakarta Sans"],
+            "headline-sm": ["Plus Jakarta Sans"],
+            "title-md": ["Plus Jakarta Sans"]
+          },
+          "fontSize": {
+            "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "600" }],
+            "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+            "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+            "headline-lg-mobile": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+            "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+            "title-md": ["16px", { "lineHeight": "22px", "letterSpacing": "0.01em", "fontWeight": "600" }]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body {
+      background-color: #E2E4DA;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Device Canvas 390x844 */
+    .mobile-frame {
+      width: 390px;
+      height: 844px;
+      position: relative;
+      background-color: #F7F7F0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 60px -15px rgba(20, 62, 53, 0.25), 0 0 0 1px rgba(20, 62, 53, 0.08);
+      border-radius: 44px;
+    }
+
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 22px;
+      line-height: 1;
+      display: inline-block;
+      text-transform: none;
+      letter-spacing: normal;
+      word-wrap: normal;
+      white-space: nowrap;
+      direction: ltr;
+      vertical-align: middle;
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+
+    /* Elegant Islamic Arch Contour Watermark */
+    .islamic-arch-accent {
+      background-image: radial-gradient(circle at 100% 0%, rgba(216, 181, 106, 0.08) 0%, rgba(216, 181, 106, 0) 70%);
+    }
+
+    /* Bottom Nav Bar Smooth Transitions */
+    .nav-cradle-path {
+      transition: transform 380ms cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: transform;
+    }
+
+    .floating-circle-container {
+      transition: transform 380ms cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: transform;
+    }
+
+    /* Tab Icon & Label transition */
+    .tab-icon, .tab-label {
+      transition: color 250ms cubic-bezier(0.4, 0, 0.2, 1), transform 250ms ease;
+    }
+
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body>
+<!-- Mobile Viewport Simulator -->
+<main class="mobile-frame select-none">
+<!-- Top System Bar Mock (Clock & Battery) -->
+<header class="w-full pt-3 px-7 flex justify-between items-center text-xs font-semibold text-primary/80 z-20">
+<span class="tracking-tight">09:41</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined !text-[14px]">signal_cellular_alt</span>
+<span class="material-symbols-outlined !text-[14px]">wifi</span>
+<span class="material-symbols-outlined !text-[15px]">battery_full</span>
+</div>
+</header>
+<!-- Top App Bar Component -->
+<section class="w-full px-5 pt-2 pb-3 bg-surface z-10">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<!-- Pesantren Crest Mark -->
+<div class="w-10 h-10 rounded-full bg-primary-container text-pesantren-gold flex items-center justify-center shadow-sm border border-pesantren-gold/30">
+<span class="material-symbols-outlined !text-[20px]" data-icon="school" style="font-variation-settings: 'FILL' 1;">school</span>
+</div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-label-sm font-label-sm text-secondary tracking-wider uppercase font-semibold">Pesantren Modern</span>
+<span class="w-1 h-1 rounded-full bg-pesantren-gold"></span>
+<span class="text-label-sm font-label-sm text-secondary font-medium">Ibnu Hafidz</span>
+</div>
+<h1 class="text-headline-sm font-headline-sm text-primary font-bold tracking-tight">Jadwal Mengajar</h1>
+</div>
+</div>
+<!-- Trailing Sync / Quick Action -->
+<button class="w-9 h-9 rounded-full bg-surface-container-high/60 active:scale-95 transition-transform flex items-center justify-center text-primary-container hover:bg-surface-container-high" id="spec-toggle-btn" title="Lihat Spesifikasi Flutter">
+<span class="material-symbols-outlined !text-[20px]" data-icon="sync">sync</span>
+</button>
+</div>
+<!-- Date & Calendar Metadata -->
+<div class="mt-3.5 flex items-center justify-between text-body-sm font-body-sm text-on-surface-variant bg-surface-container-low/70 px-3.5 py-2 rounded-xl border border-primary-container/10">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined !text-[16px] text-pesantren-gold" data-icon="calendar_month">calendar_month</span>
+<span class="font-medium text-primary">Senin, 20 Nov 2024</span>
+</div>
+<span class="text-secondary/70 text-[11px] font-medium">18 Jumadal Ula 1446 H</span>
+</div>
+<!-- Segmented View Toggle: Hari Ini / Mingguan -->
+<div class="mt-3 p-0.5 bg-surface-container-highest/60 rounded-full flex relative">
+<button class="flex-1 py-1.5 text-center text-label-sm font-label-sm font-semibold text-primary rounded-full bg-surface-container-lowest shadow-sm transition-all duration-200" id="tab-today">
+          Hari Ini (4 Kelas)
+        </button>
+<button class="flex-1 py-1.5 text-center text-label-sm font-label-sm font-medium text-secondary hover:text-primary transition-all duration-200" id="tab-week">
+          Mingguan
+        </button>
+</div>
+</section>
+<!-- Scrollable Timetable Content -->
+<div class="flex-1 overflow-y-auto px-5 pt-2 pb-36 space-y-3.5 scroll-smooth">
+<!-- Greeting Educator Header -->
+<div class="flex items-center justify-between pt-1">
+<div>
+<span class="text-label-sm font-label-sm text-secondary font-medium">Pengajar Pengampu</span>
+<p class="text-title-md font-title-md text-primary font-bold">Ustadz M. Ridwan, Lc.</p>
+</div>
+<div class="flex items-center gap-1 bg-pesantren-gold/15 text-pesantren-green px-2.5 py-1 rounded-full text-label-sm font-label-sm border border-pesantren-gold/30">
+<span class="w-1.5 h-1.5 rounded-full bg-pesantren-gold animate-pulse"></span>
+<span>Semester Ganjil</span>
+</div>
+</div>
+<!-- Card 1: 07.30 - 08.45 (Selesai) -->
+<div class="bg-surface-container-lowest rounded-2xl p-4 border border-primary-container/10 shadow-[0_2px_8px_-2px_rgba(20,62,53,0.05)] relative overflow-hidden islamic-arch-accent">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined !text-[18px] text-secondary" data-icon="schedule">schedule</span>
+<span class="text-label-md font-label-md font-semibold text-secondary">07.30 â€“ 08.45 WIB</span>
+</div>
+<!-- Status Badge Selesai -->
+<span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#8EA89D]/20 text-pesantren-green border border-[#8EA89D]/40 flex items-center gap-1">
+<span class="material-symbols-outlined !text-[13px]" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+            Selesai
+          </span>
+</div>
+<div class="mt-2.5">
+<div class="text-headline-sm font-headline-sm font-bold text-primary">Fiqih Muamalah</div>
+<div class="text-body-sm font-body-sm text-secondary/90 mt-0.5">Kelas IX-A MTs â€¢ Ruang Abu Bakar As-Siddiq</div>
+</div>
+<div class="mt-3 pt-2.5 border-t border-outline-variant/30 flex justify-between items-center text-label-sm font-label-sm text-secondary">
+<span>Hadir: 28/28 Santri</span>
+<span class="text-pesantren-green font-medium">BAP Terverifikasi</span>
+</div>
+</div>
+<!-- Card 2: 08.45 - 10.00 (Sedang Berlangsung - Active Highlight) -->
+<div class="bg-surface-container-lowest rounded-2xl p-4 border-2 border-pesantren-gold/60 shadow-[0_4px_14px_-2px_rgba(20,62,53,0.09)] relative overflow-hidden">
+<!-- Subtle gold corner flair -->
+<div class="absolute -right-6 -top-6 w-16 h-16 bg-pesantren-gold/15 rounded-full blur-sm pointer-events-none"></div>
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined !text-[18px] text-pesantren-gold" data-icon="alarm_on">alarm_on</span>
+<span class="text-label-md font-label-md font-bold text-primary">08.45 â€“ 10.00 WIB</span>
+</div>
+<!-- Status Active Badge -->
+<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-pesantren-gold/25 text-[#735515] border border-pesantren-gold/60 flex items-center gap-1 shadow-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-[#947631] animate-ping"></span>
+            Sedang Berlangsung
+          </span>
+</div>
+<div class="mt-2.5">
+<div class="text-headline-sm font-headline-sm font-bold text-primary flex items-center justify-between">
+<span>Takhassus Kitab</span>
+<span class="text-xs px-2 py-0.5 rounded bg-primary-container text-pesantren-gold font-normal">Halqah 03</span>
+</div>
+<div class="text-body-sm font-body-sm text-primary/80 font-medium mt-0.5">Kitab Fathul Qorib â€¢ Bab Wakalah &amp; Qiradh</div>
+</div>
+<!-- Attendance Action Button Inside Active Class -->
+<div class="mt-3.5 pt-3 border-t border-pesantren-gold/20 flex items-center justify-between gap-3">
+<div class="text-label-sm font-label-sm text-secondary">
+            Presensi: <strong class="text-primary font-semibold">24 Santri</strong>
+</div>
+<button class="px-4 py-1.5 bg-primary-container text-pesantren-gold rounded-full text-label-sm font-label-sm font-semibold flex items-center gap-1.5 active:scale-95 transition-transform shadow-sm">
+<span class="material-symbols-outlined !text-[15px]" data-icon="qr_code_scanner">qr_code_scanner</span>
+            Presensi Sekarang
+          </button>
+</div>
+</div>
+<!-- Card 3: 10.15 - 11.30 (Menunggu) -->
+<div class="bg-surface-container-lowest rounded-2xl p-4 border border-primary-container/10 shadow-[0_2px_8px_-2px_rgba(20,62,53,0.05)] relative overflow-hidden">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined !text-[18px] text-secondary/70" data-icon="schedule">schedule</span>
+<span class="text-label-md font-label-md font-medium text-secondary">10.15 â€“ 11.30 WIB</span>
+</div>
+<!-- Status Badge Menunggu -->
+<span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-surface-container-high/60 text-secondary border border-outline-variant/40">
+            Menunggu
+          </span>
+</div>
+<div class="mt-2.5">
+<div class="text-headline-sm font-headline-sm font-bold text-primary">Halaqoh Tahfizh Pagi</div>
+<div class="text-body-sm font-body-sm text-secondary/90 mt-0.5">Juz 28â€“30 (Muraja'ah Kubro) â€¢ Serambi Masjid Utama</div>
+</div>
+<div class="mt-3 pt-2.5 border-t border-outline-variant/30 flex justify-between items-center text-label-sm font-label-sm text-secondary/80">
+<span>Target: 3 Maqro' Kelompok B</span>
+<span class="text-xs text-secondary/70">Waktu Istirahat (15m)</span>
+</div>
+</div>
+<!-- Card 4: 13.00 - 14.15 (Menunggu Ba'da Dzuhur) -->
+<div class="bg-surface-container-lowest rounded-2xl p-4 border border-primary-container/10 shadow-[0_2px_8px_-2px_rgba(20,62,53,0.05)] relative overflow-hidden">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined !text-[18px] text-secondary/70" data-icon="schedule">schedule</span>
+<span class="text-label-md font-label-md font-medium text-secondary">13.00 â€“ 14.15 WIB</span>
+</div>
+<span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-surface-container-high/60 text-secondary border border-outline-variant/40">
+            Ba'da Dzuhur
+          </span>
+</div>
+<div class="mt-2.5">
+<div class="text-headline-sm font-headline-sm font-bold text-primary">Tarikh Islam</div>
+<div class="text-body-sm font-body-sm text-secondary/90 mt-0.5">Kelas XI MA â€¢ Khulafaur Rasyidin Era Usman bin Affan</div>
+</div>
+<div class="mt-3 pt-2.5 border-t border-outline-variant/30 flex justify-between items-center text-label-sm font-label-sm text-secondary/80">
+<span>Ruang Ibnu Khaldun (Lantai 2)</span>
+<span class="text-xs text-secondary/70">Modul 04</span>
+</div>
+</div>
+<!-- Bottom Spacer for floating tab bar clearance -->
+<div class="h-6"></div>
+</div>
+<!-- ========================================================================= -->
+<!-- REFINED RESTRAINED FLOATING BOTTOM NAVIGATION (CORE SPECIFICATION)        -->
+<!-- ========================================================================= -->
+<!--
+      - Width: calc(100% - 32px), left: 16px, right: 16px
+      - Height: 64px floating bar, positioned 14px above screen bottom (clear thumb zone)
+      - Color: Deep forest green #143E35
+      - Engineered smooth concave cradle notch with 5-6px clearance gap for #F7F7F0 background
+      - Muted Gold #D8B56A circle indicator (48px) with Deep forest green icon
+    -->
+<nav aria-label="Navigasi Utama" class="absolute left-4 right-4 bottom-4 z-40 h-[76px] pointer-events-none flex flex-col justify-end">
+<!-- Interactive Wrapper for navigation elements -->
+<div class="relative w-full h-[64px] pointer-events-auto select-none">
+<!-- SVG Mask/Cradle Bar Container -->
+<!-- Total width of container is 358px on a 390px mobile viewport (390 - 32 = 358px).
+             Each of 4 tabs is exactly 89.5px wide.
+             Tab centers:
+             Index 0 (Beranda):    44.75px
+             Index 1 (Jadwal):     134.25px
+             Index 2 (Rekapan):    223.75px
+             Index 3 (Pengaturan): 313.25px
+        -->
+<div class="absolute inset-0 w-full h-full rounded-[24px] overflow-hidden shadow-[0_8px_24px_-4px_rgba(20,62,53,0.30)]">
+<svg class="w-full h-full" fill="none" preserveaspectratio="none" viewbox="0 0 358 64" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<!--
+                Notch Mask: A pure white rectangle with a rounded cradle cutout.
+                The cutout geometry has smooth filleted shoulder transitions into the top flat edge:
+                Top clearance: 5-6px gap around 48px circle (radius = 29.5px cutout = 59px diameter).
+              -->
+<mask height="64" id="nav-cradle-mask" maskunits="userSpaceOnUse" width="358" x="0" y="0">
+<!-- White base lets everything show -->
+<rect fill="#FFFFFF" height="64" rx="24" width="358"></rect>
+<!--
+                  Black Cradle Cutout translates horizontally with JavaScript.
+                  Default Tab 1 Center = 134.25px.
+                  Shoulder filleted transition:
+                  Starts at X - 38 to X + 38.
+                  Path curves smoothly down to depth ~25px and eases back up smoothly.
+                -->
+<g class="nav-cradle-path" id="cradle-cutout-group" style="transform: translateX(134.25px);">
+<path d="M -39 0
+                           C -27 0, -25 4, -22 10
+                           C -17 21, -11 26, 0 26
+                           C 11 26, 17 21, 22 10
+                           C 25 4, 27 0, 39 0
+                           Z" fill="#000000"></path>
+</g>
+</mask>
+</defs>
+<!-- The Deep Forest Green Navigation Background Bar #143E35 masked by the cradle -->
+<rect fill="#143E35" height="64" mask="url(#nav-cradle-mask)" rx="24" width="358"></rect>
+<!-- Subtle 1px inner border for restrained tactile depth -->
+<rect height="63" mask="url(#nav-cradle-mask)" rx="23.5" stroke="rgba(216, 181, 106, 0.15)" stroke-width="1" width="357" x="0.5" y="0.5"></rect>
+</svg>
+</div>
+<!--
+          FLOATING GOLD CIRCLE (Muted Gold #D8B56A, 48px diameter)
+          Floats centered above the active cradle notch:
+          Y-placement: -14px relative to the 64px bar top (floats half above bar).
+          Controlled horizontally via JavaScript translateX()
+        -->
+<div aria-hidden="true" class="floating-circle-container absolute -top-[14px] left-0 w-[48px] h-[48px] rounded-full bg-pesantren-gold text-pesantren-green flex items-center justify-center shadow-[0_4px_12px_rgba(20,62,53,0.22)] border-[2.5px] border-surface pointer-events-none z-30" id="floating-circle" style="transform: translateX(110.25px);">
+<span class="material-symbols-outlined !text-[23px] text-pesantren-green" data-icon="calendar_today" id="floating-active-icon" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+</div>
+<!-- The 4 Navigation Touch Targets (Flex Row) -->
+<div class="relative w-full h-full flex items-center z-20">
+<!-- Tab 1: Beranda -->
+<button aria-selected="false" class="nav-tab-btn flex-1 h-full flex flex-col items-center justify-end pb-2 pt-1 active:scale-95 transition-transform" data-icon="home" data-index="0" data-label="Beranda" type="button">
+<div class="tab-icon-wrapper h-[24px] flex items-center justify-center">
+<span class="material-symbols-outlined tab-icon text-pesantren-sage !text-[22px]" data-icon="home">home</span>
+</div>
+<span class="tab-label text-[10.5px] font-medium tracking-tight text-pesantren-sage mt-1">Beranda</span>
+</button>
+<!-- Tab 2: Jadwal (Active by Default) -->
+<button aria-selected="true" class="nav-tab-btn flex-1 h-full flex flex-col items-center justify-end pb-2 pt-1 active:scale-95 transition-transform" data-icon="calendar_today" data-index="1" data-label="Jadwal" type="button">
+<div class="tab-icon-wrapper h-[24px] flex items-center justify-center opacity-0">
+<!-- Placeholder space so label aligns identically -->
+<span class="material-symbols-outlined tab-icon !text-[22px]">calendar_today</span>
+</div>
+<span class="tab-label text-[10.5px] font-semibold tracking-tight text-pesantren-gold mt-1">Jadwal</span>
+</button>
+<!-- Tab 3: Rekapan -->
+<button aria-selected="false" class="nav-tab-btn flex-1 h-full flex flex-col items-center justify-end pb-2 pt-1 active:scale-95 transition-transform" data-icon="fact_check" data-index="2" data-label="Rekapan" type="button">
+<div class="tab-icon-wrapper h-[24px] flex items-center justify-center">
+<span class="material-symbols-outlined tab-icon text-pesantren-sage !text-[22px]" data-icon="fact_check">fact_check</span>
+</div>
+<span class="tab-label text-[10.5px] font-medium tracking-tight text-pesantren-sage mt-1">Rekapan</span>
+</button>
+<!-- Tab 4: Pengaturan -->
+<button aria-selected="false" class="nav-tab-btn flex-1 h-full flex flex-col items-center justify-end pb-2 pt-1 active:scale-95 transition-transform" data-icon="tune" data-index="3" data-label="Pengaturan" type="button">
+<div class="tab-icon-wrapper h-[24px] flex items-center justify-center">
+<span class="material-symbols-outlined tab-icon text-pesantren-sage !text-[22px]" data-icon="tune">tune</span>
+</div>
+<span class="tab-label text-[10.5px] font-medium tracking-tight text-pesantren-sage mt-1">Pengaturan</span>
+</button>
+</div>
+</div>
+</nav>
+<!-- Implementation Spec Drawer (Modal Sheet for Flutter / Dev Handoff) -->
+<aside class="absolute inset-0 bg-primary/40 backdrop-blur-[2px] z-50 transition-opacity duration-300 opacity-0 pointer-events-none flex flex-col justify-end" id="spec-modal">
+<div class="bg-surface-container-lowest w-full max-h-[75%] rounded-t-3xl p-5 border-t border-pesantren-gold/30 shadow-2xl transform translate-y-full transition-transform duration-300 overflow-y-auto" id="spec-panel">
+<div class="w-12 h-1 bg-outline-variant/60 rounded-full mx-auto mb-4"></div>
+<div class="flex justify-between items-center mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-pesantren-green !text-[22px]">code_blocks</span>
+<h2 class="text-headline-sm font-headline-sm text-primary font-bold">Flutter Cradle Spec</h2>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-primary" id="close-spec-btn">
+<span class="material-symbols-outlined !text-[18px]">close</span>
+</button>
+</div>
+<p class="text-body-sm text-secondary mb-3">
+          Spesifikasi matematis implementasi Bottom Navigation Bar kustom dengan smooth cubic-bezier curve untuk Ibnu Hafidz Academic App.
+        </p>
+<!-- Metric Table -->
+<div class="bg-surface-container-low rounded-xl p-3 border border-outline-variant/30 text-label-sm space-y-1.5 mb-3 font-mono">
+<div class="flex justify-between"><span class="text-secondary">Bar Height:</span> <span class="text-primary font-semibold">64.0 dp (Floating)</span></div>
+<div class="flex justify-between"><span class="text-secondary">Inset Margin:</span> <span class="text-primary font-semibold">16.0 dp (H), 14.0 dp (B)</span></div>
+<div class="flex justify-between"><span class="text-secondary">Notch Clearance:</span> <span class="text-primary font-semibold">5.5 dp (#F7F7F0 canvas)</span></div>
+<div class="flex justify-between"><span class="text-secondary">Floating Circle:</span> <span class="text-primary font-semibold">48.0 dp (#D8B56A gold)</span></div>
+<div class="flex justify-between"><span class="text-secondary">Easing Curve:</span> <span class="text-primary font-semibold">Cubic(0.4, 0.0, 0.2, 1.0)</span></div>
+<div class="flex justify-between"><span class="text-secondary">Duration:</span> <span class="text-primary font-semibold">380 ms</span></div>
+</div>
+<!-- Flutter Code Snippet -->
+<div class="bg-pesantren-green text-surface-container-lowest text-[11px] p-3.5 rounded-xl font-mono overflow-x-auto leading-relaxed border border-pesantren-gold/20">
+<span class="text-pesantren-gold font-semibold">// Flutter CustomPainter Notch Path</span><br/>
+          path.moveTo(x - 39, 0);<br/>
+          path.cubicTo(x - 27, 0, x - 25, 4, x - 22, 10);<br/>
+          path.cubicTo(x - 17, 21, x - 11, 26, x, 26);<br/>
+          path.cubicTo(x + 11, 26, x + 17, 21, x + 22, 10);<br/>
+          path.cubicTo(x + 25, 4, x + 27, 0, x + 39, 0);
+        </div>
+<button class="w-full mt-4 py-2.5 bg-pesantren-green text-pesantren-gold rounded-full text-label-sm font-semibold text-center tracking-wide" id="spec-ok-btn">
+          Tutup Spesifikasi
+        </button>
+</div>
+</aside>
+</main>
+<!-- Interactive Logic for Tab Transitions and Cradle Motion -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const tabs = document.querySelectorAll('.nav-tab-btn');
+      const cradleCutout = document.getElementById('cradle-cutout-group');
+      const floatingCircle = document.getElementById('floating-circle');
+      const floatingActiveIcon = document.getElementById('floating-active-icon');
+
+      // Total floating bar width is 358px on standard 390px mobile viewport.
+      // 4 equal tabs => 358 / 4 = 89.5px per tab.
+      const TAB_WIDTH = 89.5;
+      const CIRCLE_RADIUS = 24; // 48px diameter / 2
+
+      // Switch active tab animation
+      function setActiveTab(index) {
+        // Calculate center for tab index
+        const targetCenterX = (index * TAB_WIDTH) + (TAB_WIDTH / 2);
+        const circleTargetX = targetCenterX - CIRCLE_RADIUS;
+
+        // Smoothly animate cradle cutout & floating gold circle
+        cradleCutout.style.transform = `translateX(${targetCenterX}px)`;
+        floatingCircle.style.transform = `translateX(${circleTargetX}px)`;
+
+        // Update labels and icon states
+        tabs.forEach((tab, i) => {
+          const isSelected = i === index;
+          tab.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+
+          const iconWrapper = tab.querySelector('.tab-icon-wrapper');
+          const icon = tab.querySelector('.tab-icon');
+          const label = tab.querySelector('.tab-label');
+
+          if (isSelected) {
+            // Hide standard icon container to reveal floating circle above
+            iconWrapper.classList.add('opacity-0');
+            label.classList.remove('text-pesantren-sage');
+            label.classList.add('text-pesantren-gold', 'font-semibold');
+
+            // Update floating circle icon
+            const currentIconName = tab.getAttribute('data-icon');
+            floatingActiveIcon.innerText = currentIconName;
+          } else {
+            iconWrapper.classList.remove('opacity-0');
+            label.classList.remove('text-pesantren-gold', 'font-semibold');
+            label.classList.add('text-pesantren-sage');
+          }
+        });
+      }
+
+      // Add click listeners to tabs
+      tabs.forEach((tab) => {
+        tab.addEventListener('click', (e) => {
+          const index = parseInt(tab.getAttribute('data-index'), 10);
+          setActiveTab(index);
+        });
+      });
+
+      // Today / Weekly segmented toggle behavior
+      const tabToday = document.getElementById('tab-today');
+      const tabWeek = document.getElementById('tab-week');
+
+      tabToday.addEventListener('click', () => {
+        tabToday.className = 'flex-1 py-1.5 text-center text-label-sm font-label-sm font-semibold text-primary rounded-full bg-surface-container-lowest shadow-sm transition-all duration-200';
+        tabWeek.className = 'flex-1 py-1.5 text-center text-label-sm font-label-sm font-medium text-secondary hover:text-primary transition-all duration-200';
+      });
+
+      tabWeek.addEventListener('click', () => {
+        tabWeek.className = 'flex-1 py-1.5 text-center text-label-sm font-label-sm font-semibold text-primary rounded-full bg-surface-container-lowest shadow-sm transition-all duration-200';
+        tabToday.className = 'flex-1 py-1.5 text-center text-label-sm font-label-sm font-medium text-secondary hover:text-primary transition-all duration-200';
+      });
+
+      // Flutter Spec Drawer Interactive toggle
+      const specModal = document.getElementById('spec-modal');
+      const specPanel = document.getElementById('spec-panel');
+      const specToggleBtn = document.getElementById('spec-toggle-btn');
+      const closeSpecBtn = document.getElementById('close-spec-btn');
+      const specOkBtn = document.getElementById('spec-ok-btn');
+
+      function openSpec() {
+        specModal.classList.remove('opacity-0', 'pointer-events-none');
+        specPanel.classList.remove('translate-y-full');
+      }
+
+      function closeSpec() {
+        specModal.classList.add('opacity-0', 'pointer-events-none');
+        specPanel.classList.add('translate-y-full');
+      }
+
+      specToggleBtn.addEventListener('click', openSpec);
+      closeSpecBtn.addEventListener('click', closeSpec);
+      specOkBtn.addEventListener('click', closeSpec);
+      specModal.addEventListener('click', (e) => {
+        if (e.target === specModal) closeSpec();
+      });
+    });
+  </script>
+</body></html>

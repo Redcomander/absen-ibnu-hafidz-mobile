@@ -8,8 +8,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/network/offline_cache_store.dart';
+import '../../core/theme/section_header.dart';
 import '../auth/auth_controller.dart';
-import '../halaqoh/halaqoh_screen.dart';
+import '../halaqoh/halaqoh_reports_screen.dart';
 import '../settings/app_settings_controller.dart';
 
 class StatsScreen extends StatefulWidget {
@@ -23,7 +25,12 @@ class _StatsScreenState extends State<StatsScreen> {
   String _module = 'absensi';
   String _type = 'formal';
   String _scope = 'all';
+  String _teacherFilter = '', _kelasFilter = '', _genderFilter = '';
+  List<Map<String, dynamic>> _filterTeachers = [], _filterClasses = [];
+  bool _loadingFilters = false;
   bool _loading = true;
+  int _loadGeneration = 0;
+  String? _loadError, _statsQueryKey;
   bool _showingOfflineData = false;
   bool? _wasOnline;
   bool _historyLoadingMore = false;
@@ -49,14 +56,23 @@ class _StatsScreenState extends State<StatsScreen> {
     final now = DateTime.now();
     _startDate = DateTime(now.year, now.month, 1);
     _endDate = now;
-    _load(resetHistory: true);
+    if (_canViewFormalAbsensi() || _canViewDiniyyahAbsensi()) {
+      if (!_canViewFormalAbsensi()) _type = 'diniyyah';
+      _load(resetHistory: true);
+    } else {
+      _module = 'halaqoh';
+      _loading = false;
+    }
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final isOnline = context.watch<AppSettingsController>().isOnline;
-    if (_wasOnline == false && isOnline && !_loading) {
+  void _observeConnectivity() {
+    final isOnline = context.select<AppSettingsController, bool>(
+      (s) => s.isOnline,
+    );
+    if (_wasOnline == false &&
+        isOnline &&
+        !_loading &&
+        (_showingOfflineData || _loadError != null)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _load(resetHistory: true);
@@ -77,55 +93,100 @@ class _StatsScreenState extends State<StatsScreen> {
   String _fmtUiDate(DateTime value) => DateFormat('dd MMM yyyy').format(value);
 
   Future<void> _load({required bool resetHistory}) async {
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        if (resetHistory) {
-          _historyPage = 1;
-        }
-      });
+    final settings = context.read<AppSettingsController>();
+    final auth = context.read<AuthController>();
+    final generation = ++_loadGeneration;
+    final account = OfflineCacheStore.scope;
+    final query = {
+      'type': _type,
+      if (_teacherFilter.isNotEmpty) 'teacher_id': _teacherFilter,
+      if (_kelasFilter.isNotEmpty) 'kelas_id': _kelasFilter,
+      if (_genderFilter.isNotEmpty) 'gender': _genderFilter,
+      'start_date': _fmtApiDate(_startDate),
+      'end_date': _fmtApiDate(_endDate),
+    };
+    final historyQuery = {
+      ...query,
+      'page': '1',
+      'per_page': '$_historyPerPage',
+      if (_search.trim().isNotEmpty) 'search': _search.trim(),
+    };
+    final key = '$account|$historyQuery';
+    bool current() =>
+        mounted &&
+        generation == _loadGeneration &&
+        OfflineCacheStore.scope == account;
+    setState(() {
+      _loading = true;
+      _loadError = null;
+      if (_statsQueryKey != key) {
+        _studentStats = {};
+        _teacherStats = {};
+        _history = [];
+        _historyTotal = 0;
+        _showingOfflineData = false;
+      }
+      _statsQueryKey = key;
+      if (resetHistory) _historyPage = 1;
+    });
+    void apply(List<Map<String, dynamic>> results) {
+      final history = results[2];
+      _studentStats = results[0];
+      _teacherStats = results[1];
+      _history = _asMapList(history['data']);
+      _historyTotal = _asInt(history['total']);
+      _historyPage = _asInt(history['page'], fallback: 1);
+      _historyPerPage = _asInt(history['per_page'], fallback: 50);
+      _showingOfflineData = results.any((r) => r['__from_cache'] == true);
     }
 
     try {
-      final token = context.read<AuthController>().token;
-      final query = {
-        'type': _type,
-        'start_date': _fmtApiDate(_startDate),
-        'end_date': _fmtApiDate(_endDate),
-      };
-
-      final results = await Future.wait([
-        ApiClient.get('/attendance/statistics', token: token, query: query),
-        ApiClient.get('/attendance/teacher-statistics',
-            token: token, query: query),
-        ApiClient.get(
+      final cached = await Future.wait([
+        OfflineCacheStore.read(
+          '/attendance/statistics',
+          query: query,
+          account: account,
+        ),
+        OfflineCacheStore.read(
+          '/attendance/teacher-statistics',
+          query: query,
+          account: account,
+        ),
+        OfflineCacheStore.read(
           '/attendance/history',
-          token: token,
-          query: {
-            ...query,
-            'page': '1',
-            'per_page': '$_historyPerPage',
-            if (_search.trim().isNotEmpty) 'search': _search.trim(),
-          },
+          query: historyQuery,
+          account: account,
         ),
       ]);
-
-      final historyRes = _asMap(results[2]);
-
-      _showingOfflineData = results.any(
-        (result) => _asMap(result)['__from_cache'] == true,
-      );
-      _studentStats = _asMap(results[0]);
-      _teacherStats = _asMap(results[1]);
-      _history = _asMapList(historyRes['data']);
-      _historyTotal = _asInt(historyRes['total']);
-      _historyPage = _asInt(historyRes['page'], fallback: 1);
-      _historyPerPage = _asInt(historyRes['per_page'], fallback: 50);
-    } catch (_) {
-      _showingOfflineData =
-          _studentStats.isNotEmpty || _teacherStats.isNotEmpty || _history.isNotEmpty;
+      if (!current()) return;
+      if (cached.every((r) => r != null)) {
+        setState(() => apply(cached.cast<Map<String, dynamic>>()));
+      }
+      if (!await settings.canSyncNow()) {
+        if (current() && _studentStats.isEmpty && _teacherStats.isEmpty) {
+          _loadError =
+              'Belum ada rekapan tersimpan untuk periode ini. Buka periode ini saat online untuk menyimpannya.';
+        }
+        return;
+      }
+      if (!current()) return;
+      final token = auth.token;
+      final results = await Future.wait([
+        ApiClient.get('/attendance/statistics', token: token, query: query),
+        ApiClient.get(
+          '/attendance/teacher-statistics',
+          token: token,
+          query: query,
+        ),
+        ApiClient.get('/attendance/history', token: token, query: historyQuery),
+      ]).timeout(const Duration(seconds: 8));
+      if (current()) apply(results);
+    } catch (error) {
+      if (!current()) return;
+      _loadError =
+          'Belum dapat memperbarui rekapan. Data tersimpan tetap tersedia.';
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (current()) setState(() => _loading = false);
     }
   }
 
@@ -141,6 +202,9 @@ class _StatsScreenState extends State<StatsScreen> {
         token: token,
         query: {
           'type': _type,
+          if (_teacherFilter.isNotEmpty) 'teacher_id': _teacherFilter,
+          if (_kelasFilter.isNotEmpty) 'kelas_id': _kelasFilter,
+          if (_genderFilter.isNotEmpty) 'gender': _genderFilter,
           'start_date': _fmtApiDate(_startDate),
           'end_date': _fmtApiDate(_endDate),
           'page': '$nextPage',
@@ -187,7 +251,8 @@ class _StatsScreenState extends State<StatsScreen> {
   bool _isManager() {
     final roles = _roleNames();
     return roles.any(
-      (role) => ['super_admin', 'admin', 'staff', 'tim_presensi'].contains(role),
+      (role) =>
+          ['super_admin', 'admin', 'staff', 'tim_presensi'].contains(role),
     );
   }
 
@@ -218,10 +283,10 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   List<ButtonSegment<String>> get _scopeSegments => const [
-        ButtonSegment(value: 'all', label: Text('Semua')),
-        ButtonSegment(value: 'student', label: Text('Santri')),
-        ButtonSegment(value: 'teacher', label: Text('Guru')),
-      ];
+    ButtonSegment(value: 'all', label: Text('Semua')),
+    ButtonSegment(value: 'student', label: Text('Santri')),
+    ButtonSegment(value: 'teacher', label: Text('Guru')),
+  ];
 
   Map<String, dynamic> _asMap(dynamic raw) {
     if (raw is Map<String, dynamic>) return raw;
@@ -271,6 +336,9 @@ class _StatsScreenState extends State<StatsScreen> {
         return const Color(0xFF2563EB);
       case 'sakit':
         return const Color(0xFFEA580C);
+      case 'dinas':
+      case 'dinas luar':
+        return const Color(0xFFB7791F);
       case 'substitute':
         return const Color(0xFF9333EA);
       default:
@@ -322,6 +390,9 @@ class _StatsScreenState extends State<StatsScreen> {
         token: token,
         query: {
           'type': _type,
+          if (_teacherFilter.isNotEmpty) 'teacher_id': _teacherFilter,
+          if (_kelasFilter.isNotEmpty) 'kelas_id': _kelasFilter,
+          if (_genderFilter.isNotEmpty) 'gender': _genderFilter,
           'start_date': _fmtApiDate(_startDate),
           'end_date': _fmtApiDate(_endDate),
         },
@@ -335,7 +406,7 @@ class _StatsScreenState extends State<StatsScreen> {
 
       final baseDir = Platform.isAndroid
           ? (await getExternalStorageDirectory() ??
-              await getApplicationDocumentsDirectory())
+                await getApplicationDocumentsDirectory())
           : await getApplicationDocumentsDirectory();
       final exportDir = Directory(
         '${baseDir.path}${Platform.pathSeparator}exports',
@@ -344,8 +415,9 @@ class _StatsScreenState extends State<StatsScreen> {
         await exportDir.create(recursive: true);
       }
 
-      final savedFile =
-          File('${exportDir.path}${Platform.pathSeparator}$fileName');
+      final savedFile = File(
+        '${exportDir.path}${Platform.pathSeparator}$fileName',
+      );
       await savedFile.writeAsBytes(file.bytes, flush: true);
 
       if (!mounted) return;
@@ -353,9 +425,7 @@ class _StatsScreenState extends State<StatsScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Export berhasil'),
-          content: Text(
-            'PDF guru disimpan ke:\n\n${savedFile.path}',
-          ),
+          content: Text('PDF guru disimpan ke:\n\n${savedFile.path}'),
           actions: [
             TextButton(
               onPressed: () async {
@@ -395,10 +465,11 @@ class _StatsScreenState extends State<StatsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final showRamadhan =
-        context.watch<AppSettingsController>().isRamadhanTabEnabled;
-    final canViewAbsensi =
-        _canViewFormalAbsensi() || _canViewDiniyyahAbsensi();
+    _observeConnectivity();
+    final showRamadhan = context.select<AppSettingsController, bool>(
+      (s) => s.isRamadhanTabEnabled,
+    );
+    final canViewAbsensi = _canViewFormalAbsensi() || _canViewDiniyyahAbsensi();
     final canViewHalaqoh = _canViewHalaqohStats();
     final typeSegments = _typeSegments(showRamadhan);
 
@@ -437,9 +508,10 @@ class _StatsScreenState extends State<StatsScreen> {
 
     final filteredTeacherSummary = teacherSummary.where((item) {
       if (searchText.isEmpty) return true;
-      return _asString(item['name'], fallback: '')
-          .toLowerCase()
-          .contains(searchText);
+      return _asString(
+        item['name'],
+        fallback: '',
+      ).toLowerCase().contains(searchText);
     }).toList();
 
     final filteredSubstituteHistory = substituteHistory.where((item) {
@@ -453,17 +525,23 @@ class _StatsScreenState extends State<StatsScreen> {
       return bag.contains(searchText);
     }).toList();
 
-    final moduleSelector = SegmentedButton<String>(
-      segments: [
+    final moduleSelector = Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
         if (canViewAbsensi)
-          const ButtonSegment(value: 'absensi', label: Text('Absensi')),
+          ChoiceChip(
+            label: const Text('Absensi'),
+            selected: _module == 'absensi',
+            onSelected: (_) => setState(() => _module = 'absensi'),
+          ),
         if (canViewHalaqoh)
-          const ButtonSegment(value: 'halaqoh', label: Text('Halaqoh')),
+          ChoiceChip(
+            label: const Text('Halaqoh'),
+            selected: _module == 'halaqoh',
+            onSelected: (_) => setState(() => _module = 'halaqoh'),
+          ),
       ],
-      selected: {_module},
-      onSelectionChanged: (value) {
-        setState(() => _module = value.first);
-      },
     );
 
     if (!canViewAbsensi && !canViewHalaqoh) {
@@ -485,13 +563,7 @@ class _StatsScreenState extends State<StatsScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: moduleSelector,
           ),
-          const Expanded(
-            child: HalaqohScreen(
-              initialTab: 'stats',
-              showHeader: false,
-              allowedTabs: {'stats', 'history'},
-            ),
-          ),
+          const Expanded(child: HalaqohReportsScreen()),
         ],
       );
     }
@@ -499,26 +571,45 @@ class _StatsScreenState extends State<StatsScreen> {
     return RefreshIndicator(
       onRefresh: () => _load(resetHistory: true),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
+          SectionHeader(
+            eyebrow: 'CATATAN PENDIDIKAN',
+            title: 'Rekapan Kehadiran',
+            subtitle: '${_fmtUiDate(_startDate)} – ${_fmtUiDate(_endDate)}',
+            icon: Icons.insights_rounded,
+          ),
+          const SizedBox(height: 20),
           moduleSelector,
           const SizedBox(height: 12),
-          if (typeSegments.length > 1)
-            SegmentedButton<String>(
-              segments: typeSegments,
-              selected: {_type},
-              onSelectionChanged: (value) {
-                setState(() => _type = value.first);
-                _load(resetHistory: true);
-              },
-            ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final segment in typeSegments)
+                ChoiceChip(
+                  label: segment.label!,
+                  selected: _type == segment.value,
+                  onSelected: (_) {
+                    setState(() => _type = segment.value);
+                    _load(resetHistory: true);
+                  },
+                ),
+            ],
+          ),
           const SizedBox(height: 12),
-          SegmentedButton<String>(
-            segments: _scopeSegments,
-            selected: {_scope},
-            onSelectionChanged: (value) {
-              setState(() => _scope = value.first);
-            },
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final segment in _scopeSegments)
+                ChoiceChip(
+                  label: segment.label!,
+                  selected: _scope == segment.value,
+                  onSelected: (_) => setState(() => _scope = segment.value),
+                ),
+            ],
           ),
           const SizedBox(height: 12),
           _buildFilterCard(),
@@ -534,8 +625,11 @@ class _StatsScreenState extends State<StatsScreen> {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.cloud_off_rounded,
-                      size: 18, color: Color(0xFFB45309)),
+                  Icon(
+                    Icons.cloud_off_rounded,
+                    size: 18,
+                    color: Color(0xFFB45309),
+                  ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -549,7 +643,29 @@ class _StatsScreenState extends State<StatsScreen> {
                 ],
               ),
             ),
-          if (_loading)
+          if (_loadError != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Text(
+                _loadError!,
+                style: const TextStyle(color: Color(0xFF855D20)),
+              ),
+            ),
+          if (_loading &&
+              (_studentStats.isNotEmpty || _teacherStats.isNotEmpty))
+            const Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: LinearProgressIndicator(),
+            ),
+          if (!_loading && _studentStats.isEmpty && _teacherStats.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'Rekapan belum tersedia untuk periode ini.',
+                textAlign: TextAlign.center,
+              ),
+            )
+          else if (_loading && _studentStats.isEmpty && _teacherStats.isEmpty)
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
@@ -557,31 +673,46 @@ class _StatsScreenState extends State<StatsScreen> {
               ),
             )
           else ...[
+            if (studentCounts.isNotEmpty &&
+                (_scope == 'all' || _scope == 'student')) ...[
+              _attendanceOverview(studentCounts),
+              const SizedBox(height: 20),
+            ],
             if (_scope == 'all' || _scope == 'student') ...[
               _buildSectionTitle(
-                  'Statistik Santri', 'Riwayat absensi santri lengkap'),
+                'Statistik Santri',
+                'Riwayat absensi santri lengkap',
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
                 children: [
                   _countCard(
-                      'Hadir',
-                      _countValue(studentCounts, ['hadir', 'Hadir']),
-                      const Color(0xFF16A34A)),
+                    'Hadir',
+                    _countValue(studentCounts, ['hadir', 'Hadir']),
+                    const Color(0xFF16A34A),
+                  ),
                   _countCard(
-                      'Izin',
-                      _countValue(studentCounts, ['izin', 'Izin']),
-                      const Color(0xFF2563EB)),
+                    'Izin',
+                    _countValue(studentCounts, ['izin', 'Izin']),
+                    const Color(0xFF2563EB),
+                  ),
                   _countCard(
-                      'Sakit',
-                      _countValue(studentCounts, ['sakit', 'Sakit']),
-                      const Color(0xFFEA580C)),
+                    'Sakit',
+                    _countValue(studentCounts, ['sakit', 'Sakit']),
+                    const Color(0xFFEA580C),
+                  ),
                   _countCard(
+                    'Alpa',
+                    _countValue(studentCounts, [
+                      'alpa',
+                      'alpha',
                       'Alpa',
-                      _countValue(
-                          studentCounts, ['alpa', 'alpha', 'Alpa', 'Alpha']),
-                      const Color(0xFFDC2626)),
+                      'Alpha',
+                    ]),
+                    const Color(0xFFDC2626),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -600,8 +731,9 @@ class _StatsScreenState extends State<StatsScreen> {
                   ),
                   const SizedBox(width: 10),
                   FilledButton.tonalIcon(
-                    onPressed:
-                        _teacherExporting ? null : _exportTeacherStatsPdf,
+                    onPressed: _teacherExporting
+                        ? null
+                        : _exportTeacherStatsPdf,
                     icon: _teacherExporting
                         ? const SizedBox(
                             width: 16,
@@ -609,9 +741,7 @@ class _StatsScreenState extends State<StatsScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.picture_as_pdf_outlined, size: 18),
-                    label: Text(
-                      _teacherExporting ? 'Proses...' : 'Export PDF',
-                    ),
+                    label: Text(_teacherExporting ? 'Proses...' : 'Export PDF'),
                   ),
                 ],
               ),
@@ -621,36 +751,169 @@ class _StatsScreenState extends State<StatsScreen> {
                 runSpacing: 10,
                 children: [
                   _countCard(
-                      'Hadir',
-                      _countValue(teacherCounts, ['Hadir', 'hadir']),
-                      const Color(0xFF16A34A)),
+                    'Hadir',
+                    _countValue(teacherCounts, ['Hadir', 'hadir']),
+                    const Color(0xFF16A34A),
+                  ),
                   _countCard(
-                      'Izin',
-                      _countValue(teacherCounts, ['Izin', 'izin']),
-                      const Color(0xFF2563EB)),
+                    'Izin',
+                    _countValue(teacherCounts, ['Izin', 'izin']),
+                    const Color(0xFF2563EB),
+                  ),
                   _countCard(
-                      'Sakit',
-                      _countValue(teacherCounts, ['Sakit', 'sakit']),
-                      const Color(0xFFEA580C)),
+                    'Sakit',
+                    _countValue(teacherCounts, ['Sakit', 'sakit']),
+                    const Color(0xFFEA580C),
+                  ),
                   _countCard(
-                      'Alpha',
-                      _countValue(teacherCounts, ['Alpha', 'alpha']),
-                      const Color(0xFFDC2626)),
+                    'Alpha',
+                    _countValue(teacherCounts, ['Alpha', 'alpha']),
+                    const Color(0xFFDC2626),
+                  ),
                   _countCard(
-                      'Subst.',
-                      _countValue(teacherCounts, ['Substitute', 'substitute']),
-                      const Color(0xFF9333EA)),
+                    'Dinas',
+                    _countValue(teacherCounts, ['Dinas', 'dinas']),
+                    const Color(0xFFB7791F),
+                  ),
+                  _countCard(
+                    'Subst.',
+                    _countValue(teacherCounts, ['Substitute', 'substitute']),
+                    const Color(0xFF9333EA),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
               _buildTeacherSummaryCard(filteredTeacherSummary),
               const SizedBox(height: 12),
               _buildSubstituteHistoryCard(filteredSubstituteHistory),
+              const SizedBox(height: 14),
+              ReportDataTable(
+                title: 'Riwayat Ketidakhadiran Guru',
+                search: _search,
+                columns: const [
+                  'Tanggal',
+                  'Guru',
+                  'Pelajaran',
+                  'Kelas',
+                  'Status',
+                  'Catatan',
+                ],
+                rows: _asMapList(_teacherStats['absence_history'])
+                    .map(
+                      (r) => [
+                        _asString(r['date']),
+                        _asString(r['teacher']),
+                        _asString(r['lesson']),
+                        _asString(r['kelas']),
+                        _asString(
+                          r['status'],
+                        ).replaceAll('Dinas Luar', 'Dinas'),
+                        _asString(r['notes']),
+                      ],
+                    )
+                    .toList(),
+              ),
             ],
           ],
         ],
       ),
     );
+  }
+
+  Widget _attendanceOverview(Map<String, dynamic> counts) {
+    final present = _countValue(counts, ['hadir', 'Hadir']);
+    final total =
+        present +
+        _countValue(counts, ['izin', 'Izin']) +
+        _countValue(counts, ['sakit', 'Sakit']) +
+        _countValue(counts, ['alpa', 'alpha', 'Alpa', 'Alpha']);
+    final ratio = total == 0 ? 0.0 : present / total;
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE7EEE6),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'KEHADIRAN SANTRI',
+            style: TextStyle(
+              fontSize: 11,
+              letterSpacing: 1.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '${(ratio * 100).toStringAsFixed(1)}%',
+            style: const TextStyle(
+              fontSize: 40,
+              color: Color(0xFF143E35),
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          Text(
+            '$present hadir dari $total catatan absensi',
+            style: const TextStyle(color: Color(0xFF3E584D)),
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: LinearProgressIndicator(
+              value: ratio,
+              minHeight: 8,
+              color: const Color(0xFF143E35),
+              backgroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadFilterOptions() async {
+    if (_loadingFilters || _filterTeachers.isNotEmpty) return;
+    _loadingFilters = true;
+    final token = context.read<AuthController>().token;
+    Future<List<Map<String, dynamic>>> options(String path) async {
+      final rows = <Map<String, dynamic>>[];
+      try {
+        for (var page = 1; mounted; page++) {
+          final response = await ApiClient.get(
+            path,
+            token: token,
+            query: {'page': '$page', 'per_page': '100'},
+            useOfflineCache: false,
+          );
+          final batch = _asMapList(response['data']);
+          rows.addAll(batch);
+          if (batch.isEmpty ||
+              page >= _asInt(response['total_pages'], fallback: 1)) {
+            break;
+          }
+        }
+      } catch (_) {
+        /* One unavailable picker must not block the other. */
+      }
+      return rows;
+    }
+
+    try {
+      final results = await Future.wait([
+        options('/attendance/assignable-teachers'),
+        options('/kelas'),
+      ]);
+      if (mounted) {
+        setState(() {
+          _filterTeachers = results[0];
+          _filterClasses = results[1];
+        });
+      }
+    } finally {
+      _loadingFilters = false;
+    }
   }
 
   Widget _buildFilterCard() {
@@ -661,14 +924,19 @@ class _StatsScreenState extends State<StatsScreen> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: ExpansionTile(
+        onExpansionChanged: (expanded) {
+          if (expanded) _loadFilterOptions();
+        },
+        tilePadding: EdgeInsets.zero,
+        shape: const Border(),
+        collapsedShape: const Border(),
+        title: const Text(
+          'Periode & pencarian',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        leading: const Icon(Icons.tune_rounded),
         children: [
-          const Text(
-            'Filter Riwayat',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -688,7 +956,72 @@ class _StatsScreenState extends State<StatsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            key: ValueKey(
+              'report-teacher-$_teacherFilter-${_filterTeachers.length}',
+            ),
+            initialValue:
+                _filterTeachers.any((r) => '${r['id']}' == _teacherFilter)
+                ? _teacherFilter
+                : '',
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Guru'),
+            items: [
+              const DropdownMenuItem(value: '', child: Text('Semua Guru')),
+              ..._filterTeachers.map(
+                (r) => DropdownMenuItem(
+                  value: '${r['id']}',
+                  child: Text(_asString(r['name'])),
+                ),
+              ),
+            ],
+            onChanged: (value) {
+              setState(() => _teacherFilter = value ?? '');
+              _load(resetHistory: true);
+            },
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            key: ValueKey(
+              'report-class-$_kelasFilter-${_filterClasses.length}',
+            ),
+            initialValue:
+                _filterClasses.any((r) => '${r['id']}' == _kelasFilter)
+                ? _kelasFilter
+                : '',
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Kelas'),
+            items: [
+              const DropdownMenuItem(value: '', child: Text('Semua Kelas')),
+              ..._filterClasses.map(
+                (r) => DropdownMenuItem(
+                  value: '${r['id']}',
+                  child: Text('${r['nama']} ${r['tingkat'] ?? ''}'),
+                ),
+              ),
+            ],
+            onChanged: (value) {
+              setState(() => _kelasFilter = value ?? '');
+              _load(resetHistory: true);
+            },
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _genderFilter,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Jenis Kelamin'),
+            items: const [
+              DropdownMenuItem(value: '', child: Text('Semua (Banin & Banat)')),
+              DropdownMenuItem(value: 'banin', child: Text('Banin')),
+              DropdownMenuItem(value: 'banat', child: Text('Banat')),
+            ],
+            onChanged: (value) {
+              setState(() => _genderFilter = value ?? '');
+              _load(resetHistory: true);
+            },
+          ),
+          const SizedBox(height: 12),
           TextField(
             controller: _searchController,
             onChanged: _onSearchChanged,
@@ -721,10 +1054,7 @@ class _StatsScreenState extends State<StatsScreen> {
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 2),
-        Text(
-          subtitle,
-          style: const TextStyle(color: Color(0xFF6B7280)),
-        ),
+        Text(subtitle, style: const TextStyle(color: Color(0xFF6B7280))),
       ],
     );
   }
@@ -766,12 +1096,17 @@ class _StatsScreenState extends State<StatsScreen> {
             )
           else
             ..._history.map((row) {
-              final status = _asString(row['status']);
+              final status = _asString(
+                row['original_status'] ?? row['status'],
+              ).replaceAll('Dinas Luar', 'Dinas');
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: _statusColor(status).withValues(alpha: 0.12),
-                  child: Icon(Icons.person_outline,
-                      color: _statusColor(status), size: 18),
+                  child: Icon(
+                    Icons.person_outline,
+                    color: _statusColor(status),
+                    size: 18,
+                  ),
                 ),
                 title: Text(
                   _asString(row['name']),
@@ -781,8 +1116,10 @@ class _StatsScreenState extends State<StatsScreen> {
                   '${_asString(row['kelas_nama'])} • ${_formatRowDate(row['tanggal'])}',
                 ),
                 trailing: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: _statusColor(status).withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(999),
@@ -856,15 +1193,35 @@ class _StatsScreenState extends State<StatsScreen> {
                   runSpacing: 6,
                   children: [
                     _miniStat(
-                        'H', _asInt(row['hadir']), const Color(0xFF16A34A)),
+                      'H',
+                      _asInt(row['hadir']),
+                      const Color(0xFF16A34A),
+                    ),
                     _miniStat(
-                        'I', _asInt(row['izin']), const Color(0xFF2563EB)),
+                      'I',
+                      _asInt(row['izin']),
+                      const Color(0xFF2563EB),
+                    ),
                     _miniStat(
-                        'S', _asInt(row['sakit']), const Color(0xFFEA580C)),
+                      'S',
+                      _asInt(row['sakit']),
+                      const Color(0xFFEA580C),
+                    ),
                     _miniStat(
-                        'A', _asInt(row['alpha']), const Color(0xFFDC2626)),
-                    _miniStat('Sub', _asInt(row['substitute']),
-                        const Color(0xFF9333EA)),
+                      'A',
+                      _asInt(row['alpha']),
+                      const Color(0xFFDC2626),
+                    ),
+                    _miniStat(
+                      'Dinas',
+                      _asInt(row['dinas']),
+                      const Color(0xFFB7791F),
+                    ),
+                    _miniStat(
+                      'Sub',
+                      _asInt(row['substitute']),
+                      const Color(0xFF9333EA),
+                    ),
                   ],
                 ),
               );
@@ -902,8 +1259,11 @@ class _StatsScreenState extends State<StatsScreen> {
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: _statusColor(status).withValues(alpha: 0.12),
-                  child: Icon(Icons.swap_horiz,
-                      color: _statusColor(status), size: 18),
+                  child: Icon(
+                    Icons.swap_horiz,
+                    color: _statusColor(status),
+                    size: 18,
+                  ),
                 ),
                 title: Text(
                   _asString(row['lesson']),
@@ -914,8 +1274,10 @@ class _StatsScreenState extends State<StatsScreen> {
                 ),
                 isThreeLine: true,
                 trailing: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: _statusColor(status).withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(999),
@@ -937,11 +1299,11 @@ class _StatsScreenState extends State<StatsScreen> {
 
   Widget _countCard(String label, int value, Color color) {
     return Container(
-      width: 150,
+      width: (MediaQuery.sizeOf(context).width - 50) / 2,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Column(

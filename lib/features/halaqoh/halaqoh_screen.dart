@@ -9,6 +9,8 @@ import 'package:provider/provider.dart';
 import '../../core/network/api_client.dart';
 import '../auth/auth_controller.dart';
 import '../settings/app_settings_controller.dart';
+import 'halaqoh_reports_screen.dart';
+import 'membership_screen.dart';
 
 const List<String> _halaqohSessions = ['Shubuh', 'Ashar', 'Isya'];
 
@@ -27,7 +29,11 @@ List<Map<String, dynamic>> _asMapList(dynamic value) {
 
 String _asString(dynamic value, {String fallback = '-'}) {
   final result = value?.toString().trim() ?? '';
-  return result.isEmpty ? fallback : result;
+  return result.isEmpty
+      ? fallback
+      : result == 'Dinas Luar'
+      ? 'Dinas'
+      : result;
 }
 
 int _asInt(dynamic value, {int fallback = 0}) {
@@ -38,6 +44,8 @@ int _asInt(dynamic value, {int fallback = 0}) {
 
 Color _statusColor(String status) {
   switch (status.toLowerCase()) {
+    case 'dinas':
+      return const Color(0xFFB7791F);
     case 'hadir':
       return const Color(0xFF16A34A);
     case 'izin':
@@ -82,9 +90,9 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
   late String _mainTab;
   String _historyTab = 'students';
 
-  bool _loadingGroups = true;
-  bool _loadingStats = true;
-  bool _loadingHistory = true;
+  bool _loadingGroups = false;
+  bool _loadingStats = false;
+  bool _loadingHistory = false;
   bool _showingOfflineData = false;
   bool? _wasOnline;
   bool _exportingStudentReport = false;
@@ -130,10 +138,10 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
     _loadAll();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final isOnline = context.watch<AppSettingsController>().isOnline;
+  void _observeConnectivity() {
+    final isOnline = context.select<AppSettingsController, bool>(
+      (s) => s.isOnline,
+    );
     final isBusy = _loadingGroups || _loadingStats || _loadingHistory;
     if (_wasOnline == false && isOnline && !isBusy) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -146,11 +154,7 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
   }
 
   Future<void> _loadAll() async {
-    await Future.wait([
-      _loadAssignments(),
-      _loadStats(),
-      _loadHistory(),
-    ]);
+    await _refreshCurrentTab();
   }
 
   Future<void> _loadAssignments() async {
@@ -175,9 +179,9 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
       _showingOfflineData = _groups.isNotEmpty;
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memuat halaqoh: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal memuat halaqoh: $e')));
       }
     } finally {
       if (mounted) setState(() => _loadingGroups = false);
@@ -196,10 +200,16 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
       };
 
       final results = await Future.wait([
-        ApiClient.get('/halaqoh/statistics/students',
-            token: token, query: query),
-        ApiClient.get('/halaqoh/statistics/teachers',
-            token: token, query: query),
+        ApiClient.get(
+          '/halaqoh/statistics/students',
+          token: token,
+          query: query,
+        ),
+        ApiClient.get(
+          '/halaqoh/statistics/teachers',
+          token: token,
+          query: query,
+        ),
       ]);
 
       _showingOfflineData = results.any(
@@ -215,10 +225,12 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
         final seen = <int>{};
         _teachers = _groups
             .where((group) => seen.add(_asInt(group['teacher_id'])))
-            .map((group) => {
-                  'id': group['teacher_id'],
-                  'name': group['teacher_name'],
-                })
+            .map(
+              (group) => {
+                'id': group['teacher_id'],
+                'name': group['teacher_name'],
+              },
+            )
             .toList();
       }
     } catch (e) {
@@ -378,7 +390,7 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
 
       final baseDir = Platform.isAndroid
           ? (await getExternalStorageDirectory() ??
-              await getApplicationDocumentsDirectory())
+                await getApplicationDocumentsDirectory())
           : await getApplicationDocumentsDirectory();
       final exportDir = Directory(
         '${baseDir.path}${Platform.pathSeparator}exports',
@@ -387,8 +399,9 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
         await exportDir.create(recursive: true);
       }
 
-      final savedFile =
-          File('${exportDir.path}${Platform.pathSeparator}$fileName');
+      final savedFile = File(
+        '${exportDir.path}${Platform.pathSeparator}$fileName',
+      );
       await savedFile.writeAsBytes(file.bytes, flush: true);
 
       if (!mounted) return;
@@ -467,13 +480,15 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
 
     return _groups
         .map((group) {
-          final assignments =
-              _asMapList(group['assignments']).where((assignment) {
+          final assignments = _asMapList(group['assignments']).where((
+            assignment,
+          ) {
             final student = _asMap(assignment['student']);
             final teacher = _asMap(assignment['teacher']);
             final gender = _asString(student['jenis_kelamin'], fallback: '');
 
-            final genderOk = _selectedGender.isEmpty ||
+            final genderOk =
+                _selectedGender.isEmpty ||
                 (_selectedGender == 'banin' &&
                     gender.toLowerCase().contains('laki')) ||
                 (_selectedGender == 'banat' &&
@@ -491,10 +506,7 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
             return bag.contains(query);
           }).toList();
 
-          return {
-            ...group,
-            'assignments': assignments,
-          };
+          return {...group, 'assignments': assignments};
         })
         .where((group) => _asMapList(group['assignments']).isNotEmpty)
         .toList();
@@ -502,21 +514,24 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
 
   List<String> get _historyStatusOptions => _historyTab == 'students'
       ? const ['hadir', 'izin', 'sakit', 'alpa']
-      : const ['Hadir', 'Izin', 'Sakit', 'Alpha'];
+      : const ['Hadir', 'Izin', 'Sakit', 'Alpha', 'Dinas'];
 
   List<ButtonSegment<String>> _mainSegments() {
     final segments = <ButtonSegment<String>>[];
     if (widget.allowedTabs.contains('groups')) {
-      segments
-          .add(const ButtonSegment(value: 'groups', label: Text('Kelompok')));
+      segments.add(
+        const ButtonSegment(value: 'groups', label: Text('Kelompok')),
+      );
     }
     if (widget.allowedTabs.contains('stats')) {
-      segments
-          .add(const ButtonSegment(value: 'stats', label: Text('Statistik')));
+      segments.add(
+        const ButtonSegment(value: 'stats', label: Text('Statistik')),
+      );
     }
     if (widget.allowedTabs.contains('history')) {
-      segments
-          .add(const ButtonSegment(value: 'history', label: Text('Riwayat')));
+      segments.add(
+        const ButtonSegment(value: 'history', label: Text('Riwayat')),
+      );
     }
     return segments;
   }
@@ -525,10 +540,8 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
     final updated = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _HalaqohStudentAttendanceSheet(
-        group: group,
-        date: _selectedDate,
-      ),
+      builder: (_) =>
+          _HalaqohStudentAttendanceSheet(group: group, date: _selectedDate),
     );
 
     if (updated == true) {
@@ -540,10 +553,8 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
     final updated = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _HalaqohTeacherAttendanceSheet(
-        group: group,
-        date: _selectedDate,
-      ),
+      builder: (_) =>
+          _HalaqohTeacherAttendanceSheet(group: group, date: _selectedDate),
     );
 
     if (updated == true) {
@@ -597,8 +608,9 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
     try {
       final token = context.read<AuthController>().token;
       final assignments = _asMapList(group['assignments']);
-      final firstAssignment =
-          assignments.isEmpty ? <String, dynamic>{} : assignments.first;
+      final firstAssignment = assignments.isEmpty
+          ? <String, dynamic>{}
+          : assignments.first;
       final assignmentId = _asInt(firstAssignment['id']);
       if (assignmentId == 0) return;
 
@@ -614,23 +626,28 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Pengganti sesi $session berhasil dibatalkan')),
+            content: Text('Pengganti sesi $session berhasil dibatalkan'),
+          ),
         );
       }
       await Future.wait([_loadAssignments(), _loadHistory()]);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final studentChart = _asMap(_studentStats['chart_data']);
-    final teacherChart = _asMap(_teacherStats['chart_data']);
+    _observeConnectivity();
+    final studentChart = {
+      for (final row in _asMapList(_studentStats['chartData']))
+        _asString(row['name']).toLowerCase(): row['value'],
+    };
+    final teacherChart = _asMap(_teacherStats['stats']);
 
     final bottomPadding = MediaQuery.of(context).padding.bottom + 32;
 
@@ -656,7 +673,19 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
               segments: _mainSegments(),
               selected: {_mainTab},
               onSelectionChanged: (value) {
+                if (value.first == 'stats') {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => Scaffold(
+                        appBar: AppBar(title: const Text('Rekapan Halaqoh')),
+                        body: const HalaqohReportsScreen(),
+                      ),
+                    ),
+                  );
+                  return;
+                }
                 setState(() => _mainTab = value.first);
+                _refreshCurrentTab();
               },
             ),
             const SizedBox(height: 12),
@@ -672,8 +701,11 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.cloud_off_rounded,
-                      size: 18, color: Color(0xFFB45309)),
+                  Icon(
+                    Icons.cloud_off_rounded,
+                    size: 18,
+                    color: Color(0xFFB45309),
+                  ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -729,27 +761,30 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
                         onPressed: _exportingStudentReport
                             ? null
                             : () => _exportHalaqohReport(
-                                  scope: 'student',
-                                  format: 'pdf',
-                                ),
+                                scope: 'student',
+                                format: 'pdf',
+                              ),
                         icon: _exportingStudentReport
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
-                            : const Icon(Icons.picture_as_pdf_outlined,
-                                size: 18),
+                            : const Icon(
+                                Icons.picture_as_pdf_outlined,
+                                size: 18,
+                              ),
                         label: const Text('Export PDF'),
                       ),
                       FilledButton.tonalIcon(
                         onPressed: _exportingStudentReport
                             ? null
                             : () => _exportHalaqohReport(
-                                  scope: 'student',
-                                  format: 'excel',
-                                ),
+                                scope: 'student',
+                                format: 'excel',
+                              ),
                         icon: const Icon(Icons.grid_on_rounded, size: 18),
                         label: const Text('Export Excel'),
                       ),
@@ -762,14 +797,26 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
                 spacing: 10,
                 runSpacing: 10,
                 children: [
-                  _metricCard('Hadir', _asInt(studentChart['hadir']),
-                      const Color(0xFF16A34A)),
-                  _metricCard('Izin', _asInt(studentChart['izin']),
-                      const Color(0xFF2563EB)),
-                  _metricCard('Sakit', _asInt(studentChart['sakit']),
-                      const Color(0xFFEA580C)),
-                  _metricCard('Alpa', _asInt(studentChart['alpa']),
-                      const Color(0xFFDC2626)),
+                  _metricCard(
+                    'Hadir',
+                    _asInt(studentChart['hadir']),
+                    const Color(0xFF16A34A),
+                  ),
+                  _metricCard(
+                    'Izin',
+                    _asInt(studentChart['izin']),
+                    const Color(0xFF2563EB),
+                  ),
+                  _metricCard(
+                    'Sakit',
+                    _asInt(studentChart['sakit']),
+                    const Color(0xFFEA580C),
+                  ),
+                  _metricCard(
+                    'Alpa',
+                    _asInt(studentChart['alpa']),
+                    const Color(0xFFDC2626),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -786,27 +833,30 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
                         onPressed: _exportingTeacherReport
                             ? null
                             : () => _exportHalaqohReport(
-                                  scope: 'teacher',
-                                  format: 'pdf',
-                                ),
+                                scope: 'teacher',
+                                format: 'pdf',
+                              ),
                         icon: _exportingTeacherReport
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
-                            : const Icon(Icons.picture_as_pdf_outlined,
-                                size: 18),
+                            : const Icon(
+                                Icons.picture_as_pdf_outlined,
+                                size: 18,
+                              ),
                         label: const Text('Export PDF'),
                       ),
                       FilledButton.tonalIcon(
                         onPressed: _exportingTeacherReport
                             ? null
                             : () => _exportHalaqohReport(
-                                  scope: 'teacher',
-                                  format: 'excel',
-                                ),
+                                scope: 'teacher',
+                                format: 'excel',
+                              ),
                         icon: const Icon(Icons.grid_on_rounded, size: 18),
                         label: const Text('Export Excel'),
                       ),
@@ -819,14 +869,26 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
                 spacing: 10,
                 runSpacing: 10,
                 children: [
-                  _metricCard('Hadir', _asInt(teacherChart['Hadir']),
-                      const Color(0xFF16A34A)),
-                  _metricCard('Izin', _asInt(teacherChart['Izin']),
-                      const Color(0xFF2563EB)),
-                  _metricCard('Sakit', _asInt(teacherChart['Sakit']),
-                      const Color(0xFFEA580C)),
-                  _metricCard('Alpha', _asInt(teacherChart['Alpha']),
-                      const Color(0xFFDC2626)),
+                  _metricCard(
+                    'Hadir',
+                    _asInt(teacherChart['Hadir']),
+                    const Color(0xFF16A34A),
+                  ),
+                  _metricCard(
+                    'Izin',
+                    _asInt(teacherChart['Izin']),
+                    const Color(0xFF2563EB),
+                  ),
+                  _metricCard(
+                    'Sakit',
+                    _asInt(teacherChart['Sakit']),
+                    const Color(0xFFEA580C),
+                  ),
+                  _metricCard(
+                    'Alpha',
+                    _asInt(teacherChart['Alpha']),
+                    const Color(0xFFDC2626),
+                  ),
                 ],
               ),
             ],
@@ -933,7 +995,8 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
                   onPressed: () => _pickRangeDate(start: true),
                   icon: const Icon(Icons.calendar_today_outlined, size: 16),
                   label: Text(
-                      _formatDisplayDate(_rangeStartDate.toIso8601String())),
+                    _formatDisplayDate(_rangeStartDate.toIso8601String()),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -941,8 +1004,9 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () => _pickRangeDate(start: false),
                   icon: const Icon(Icons.event_outlined, size: 16),
-                  label:
-                      Text(_formatDisplayDate(_rangeEndDate.toIso8601String())),
+                  label: Text(
+                    _formatDisplayDate(_rangeEndDate.toIso8601String()),
+                  ),
                 ),
               ),
             ],
@@ -958,7 +1022,7 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
                   value: teacher['id']?.toString() ?? '',
                   child: Text(_asString(teacher['name'])),
                 ),
-              )
+              ),
             ],
             onChanged: (value) {
               setState(() => _teacherFilter = value ?? '');
@@ -1008,7 +1072,8 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
                   onPressed: () => _pickRangeDate(start: true),
                   icon: const Icon(Icons.calendar_today_outlined, size: 16),
                   label: Text(
-                      _formatDisplayDate(_rangeStartDate.toIso8601String())),
+                    _formatDisplayDate(_rangeStartDate.toIso8601String()),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1016,8 +1081,9 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () => _pickRangeDate(start: false),
                   icon: const Icon(Icons.event_outlined, size: 16),
-                  label:
-                      Text(_formatDisplayDate(_rangeEndDate.toIso8601String())),
+                  label: Text(
+                    _formatDisplayDate(_rangeEndDate.toIso8601String()),
+                  ),
                 ),
               ),
             ],
@@ -1082,13 +1148,16 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
             children: _sessionTimes.map((item) {
               final active = item['is_active'] == true;
               return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: (active
-                          ? const Color(0xFF16A34A)
-                          : const Color(0xFF6B7280))
-                      .withValues(alpha: 0.10),
+                  color:
+                      (active
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFF6B7280))
+                          .withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -1118,7 +1187,8 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
     final teacherAttendance = _asMap(badgeInfo['teacher_attendance']);
     final subs = _substitutesForTeacher(teacherId);
     final canOpenStudentAttendance = access['can_access_attendance'] == true;
-    final canOpenTeacherAttendance = access['can_manage'] == true ||
+    final canOpenTeacherAttendance =
+        access['can_manage'] == true ||
         access['is_substitute'] == true ||
         currentUserId == teacherId;
 
@@ -1138,7 +1208,9 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
                       Text(
                         _asString(group['teacher_name']),
                         style: const TextStyle(
-                            fontWeight: FontWeight.w900, fontSize: 16),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -1157,6 +1229,23 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
               ],
             ),
             const SizedBox(height: 12),
+            if (canRequestHalaqohMembership(
+              context.read<AuthController>().user,
+              teacherId,
+            ))
+              OutlinedButton.icon(
+                icon: const Icon(Icons.group_add_outlined),
+                label: const Text('Ajukan perubahan santri'),
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          HalaqohMembershipScreen(teacherId: teacherId),
+                    ),
+                  );
+                  if (mounted) await _loadAssignments();
+                },
+              ),
             if (studentBadges.isNotEmpty) ...[
               const Text(
                 'Status Absen Santri',
@@ -1172,19 +1261,23 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
                   final color = completed
                       ? const Color(0xFF16A34A)
                       : partial
-                          ? const Color(0xFFD97706)
-                          : const Color(0xFF9CA3AF);
+                      ? const Color(0xFFD97706)
+                      : const Color(0xFF9CA3AF);
                   return Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '${_asString(item['session'])} ${_asInt(item['count'])}/${_asInt(item['total'])}',
-                      style:
-                          TextStyle(color: color, fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   );
                 }).toList(),
@@ -1200,14 +1293,18 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
               spacing: 8,
               runSpacing: 8,
               children: _halaqohSessions.map((session) {
-                final status =
-                    _asString(teacherAttendance[session], fallback: 'Belum');
+                final status = _asString(
+                  teacherAttendance[session],
+                  fallback: 'Belum',
+                );
                 final color = status == 'Belum'
                     ? const Color(0xFF6B7280)
                     : _statusColor(status);
                 return Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(12),
@@ -1229,8 +1326,10 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
               ...subs.map(
                 (item) => Container(
                   margin: const EdgeInsets.only(bottom: 6),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFFBEB),
                     borderRadius: BorderRadius.circular(12),
@@ -1291,7 +1390,7 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
               height: (assignments.length * 92.0).clamp(140.0, 260.0),
               child: ListView.separated(
                 itemCount: assignments.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   final assignment = assignments[index];
                   final student = _asMap(assignment['student']);
@@ -1368,8 +1467,11 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: _statusColor(status).withValues(alpha: 0.12),
-                  child: Icon(Icons.person_outline,
-                      color: _statusColor(status), size: 18),
+                  child: Icon(
+                    Icons.person_outline,
+                    color: _statusColor(status),
+                    size: 18,
+                  ),
                 ),
                 title: Text(
                   _asString(student['nama_lengkap']),
@@ -1424,8 +1526,11 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: _statusColor(status).withValues(alpha: 0.12),
-                  child: Icon(Icons.badge_outlined,
-                      color: _statusColor(status), size: 18),
+                  child: Icon(
+                    Icons.badge_outlined,
+                    color: _statusColor(status),
+                    size: 18,
+                  ),
                 ),
                 title: Text(
                   _asString(teacher['name']),
@@ -1509,12 +1614,15 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: TextStyle(color: color, fontWeight: FontWeight.w700)),
+          Text(
+            label,
+            style: TextStyle(color: color, fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 2),
-          Text('$value',
-              style:
-                  const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          Text(
+            '$value',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+          ),
         ],
       ),
     );
@@ -1530,8 +1638,11 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
       ),
       child: Text(
         label,
-        style:
-            TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12),
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
       ),
     );
   }
@@ -1545,8 +1656,11 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
       ),
       child: Text(
         label,
-        style:
-            TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 12),
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
       ),
     );
   }
@@ -1576,6 +1690,7 @@ class _HalaqohStudentAttendanceSheetState
   };
   final Set<String> _submittedSessions = <String>{};
   Map<String, dynamic> _substituteMap = {};
+  Map<String, dynamic> _offlinePermits = {};
 
   @override
   void initState() {
@@ -1588,8 +1703,9 @@ class _HalaqohStudentAttendanceSheetState
     try {
       final token = context.read<AuthController>().token;
       final assignments = _asMapList(widget.group['assignments']);
-      final firstAssignment =
-          assignments.isEmpty ? <String, dynamic>{} : assignments.first;
+      final firstAssignment = assignments.isEmpty
+          ? <String, dynamic>{}
+          : assignments.first;
       final assignmentId = _asInt(firstAssignment['id']);
       if (assignmentId == 0) return;
 
@@ -1602,6 +1718,7 @@ class _HalaqohStudentAttendanceSheetState
       final allAssignments = _asMapList(res['assignments']);
       final attendanceMap = _asMap(res['attendance_map']);
       _substituteMap = _asMap(res['substitute_map']);
+      _offlinePermits = _asMap(res['offline_permits']);
 
       for (final session in _halaqohSessions) {
         final rows = allAssignments.map((assignment) {
@@ -1614,8 +1731,9 @@ class _HalaqohStudentAttendanceSheetState
           return {
             'halaqoh_assignment_id': _asInt(assignment['id']),
             'student_id': studentId,
-            'student_name':
-                _asString(_asMap(assignment['student'])['nama_lengkap']),
+            'student_name': _asString(
+              _asMap(assignment['student'])['nama_lengkap'],
+            ),
             'status': _asString(existing['status'], fallback: 'hadir'),
             'notes': _asString(existing['notes'], fallback: ''),
           };
@@ -1644,6 +1762,8 @@ class _HalaqohStudentAttendanceSheetState
         body: {
           'date': widget.date,
           'records': currentRecords,
+          'offline_permit': _offlinePermits[_activeSession] ?? '',
+          'captured_at': DateTime.now().toUtc().toIso8601String(),
         },
       );
 
@@ -1651,16 +1771,18 @@ class _HalaqohStudentAttendanceSheetState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(
-                  _asString(res['message'], fallback: 'Berhasil disimpan'))),
+            content: Text(
+              _asString(res['message'], fallback: 'Berhasil disimpan'),
+            ),
+          ),
         );
       }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -1761,43 +1883,50 @@ class _HalaqohStudentAttendanceSheetState
                           children: [
                             Text(
                               _asString(record['student_name']),
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w800),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                             const SizedBox(height: 8),
                             Wrap(
                               spacing: 6,
                               runSpacing: 6,
                               children: const ['hadir', 'izin', 'sakit', 'alpa']
-                                  .map(
-                                (status) => status,
-                              )
+                                  .map((status) => status)
                                   .map((status) {
-                                final selected = record['status'] == status;
-                                final color = _statusColor(status);
-                                return ChoiceChip(
-                                  label: Text(status.toUpperCase()),
-                                  selected: selected,
-                                  onSelected: (_) {
-                                    setState(() => record['status'] = status);
-                                  },
-                                  selectedColor: color.withValues(alpha: 0.15),
-                                  labelStyle: TextStyle(
-                                    color: selected
-                                        ? color
-                                        : const Color(0xFF6B7280),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                );
-                              }).toList(),
+                                    final selected = record['status'] == status;
+                                    final color = _statusColor(status);
+                                    return ChoiceChip(
+                                      label: Text(status.toUpperCase()),
+                                      selected: selected,
+                                      onSelected: (_) {
+                                        setState(
+                                          () => record['status'] = status,
+                                        );
+                                      },
+                                      selectedColor: color.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      labelStyle: TextStyle(
+                                        color: selected
+                                            ? color
+                                            : const Color(0xFF6B7280),
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    );
+                                  })
+                                  .toList(),
                             ),
                             const SizedBox(height: 8),
                             TextFormField(
-                              initialValue:
-                                  _asString(record['notes'], fallback: ''),
+                              initialValue: _asString(
+                                record['notes'],
+                                fallback: '',
+                              ),
                               onChanged: (value) => record['notes'] = value,
-                              decoration:
-                                  const InputDecoration(labelText: 'Catatan'),
+                              decoration: const InputDecoration(
+                                labelText: 'Catatan',
+                              ),
                             ),
                           ],
                         ),
@@ -1819,13 +1948,17 @@ class _HalaqohStudentAttendanceSheetState
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _saving ? null : _save,
+                      onPressed: _saving || _loading || currentRecords.isEmpty
+                          ? null
+                          : _save,
                       child: _saving
                           ? const SizedBox(
                               height: 18,
                               width: 18,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : Text('Simpan $_activeSession'),
                     ),
@@ -1860,6 +1993,7 @@ class _HalaqohTeacherAttendanceSheetState
   bool _saving = false;
   String _activeSession = _halaqohSessions.first;
   List<Map<String, dynamic>> _sessionInfos = [];
+  Map<String, dynamic> _offlinePermits = {};
   String _status = 'Hadir';
   String _notes = '';
 
@@ -1874,8 +2008,9 @@ class _HalaqohTeacherAttendanceSheetState
     try {
       final token = context.read<AuthController>().token;
       final assignments = _asMapList(widget.group['assignments']);
-      final firstAssignment =
-          assignments.isEmpty ? <String, dynamic>{} : assignments.first;
+      final firstAssignment = assignments.isEmpty
+          ? <String, dynamic>{}
+          : assignments.first;
       final assignmentId = _asInt(firstAssignment['id']);
       if (assignmentId == 0) return;
 
@@ -1885,6 +2020,7 @@ class _HalaqohTeacherAttendanceSheetState
         query: {'date': widget.date},
       );
       _sessionInfos = _asMapList(res['session_infos']);
+      _offlinePermits = _asMap(res['offline_permits']);
       _syncForm();
     } catch (e) {
       if (mounted) {
@@ -1903,6 +2039,7 @@ class _HalaqohTeacherAttendanceSheetState
       orElse: () => <String, dynamic>{},
     );
     _status = _asString(info['status'], fallback: 'Hadir');
+    if (_status == 'Dinas Luar') _status = 'Dinas';
     _notes = _asString(info['notes'], fallback: '');
   }
 
@@ -1911,8 +2048,9 @@ class _HalaqohTeacherAttendanceSheetState
     try {
       final token = context.read<AuthController>().token;
       final assignments = _asMapList(widget.group['assignments']);
-      final firstAssignment =
-          assignments.isEmpty ? <String, dynamic>{} : assignments.first;
+      final firstAssignment = assignments.isEmpty
+          ? <String, dynamic>{}
+          : assignments.first;
       final assignmentId = _asInt(firstAssignment['id']);
       if (assignmentId == 0) return;
 
@@ -1923,22 +2061,26 @@ class _HalaqohTeacherAttendanceSheetState
           'status': _status,
           'notes': _notes,
           'date': widget.date,
+          'offline_permit': _asString(_offlinePermits[_activeSession]),
+          'captured_at': DateTime.now().toUtc().toIso8601String(),
         },
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(
-                  _asString(res['message'], fallback: 'Berhasil disimpan'))),
+            content: Text(
+              _asString(res['message'], fallback: 'Berhasil disimpan'),
+            ),
+          ),
         );
       }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -1981,8 +2123,10 @@ class _HalaqohTeacherAttendanceSheetState
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SegmentedButton<String>(
                 segments: _halaqohSessions
-                    .map((session) =>
-                        ButtonSegment(value: session, label: Text(session)))
+                    .map(
+                      (session) =>
+                          ButtonSegment(value: session, label: Text(session)),
+                    )
                     .toList(),
                 selected: {_activeSession},
                 onSelectionChanged: (value) {
@@ -2027,6 +2171,7 @@ class _HalaqohTeacherAttendanceSheetState
                         DropdownMenuItem(value: 'Izin', child: Text('Izin')),
                         DropdownMenuItem(value: 'Sakit', child: Text('Sakit')),
                         DropdownMenuItem(value: 'Alpha', child: Text('Alpha')),
+                        DropdownMenuItem(value: 'Dinas', child: Text('Dinas')),
                       ],
                       onChanged: (value) =>
                           setState(() => _status = value ?? 'Hadir'),
@@ -2054,13 +2199,17 @@ class _HalaqohTeacherAttendanceSheetState
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _saving ? null : _save,
+                      onPressed: _saving || _loading || _sessionInfos.isEmpty
+                          ? null
+                          : _save,
                       child: _saving
                           ? const SizedBox(
                               height: 18,
                               width: 18,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : Text('Simpan $_activeSession'),
                     ),
@@ -2135,8 +2284,9 @@ class _HalaqohSubstituteSheetState extends State<_HalaqohSubstituteSheet> {
     try {
       final token = context.read<AuthController>().token;
       final assignments = _asMapList(widget.group['assignments']);
-      final firstAssignment =
-          assignments.isEmpty ? <String, dynamic>{} : assignments.first;
+      final firstAssignment = assignments.isEmpty
+          ? <String, dynamic>{}
+          : assignments.first;
       final assignmentId = _asInt(firstAssignment['id']);
       if (assignmentId == 0) return;
 
@@ -2167,9 +2317,9 @@ class _HalaqohSubstituteSheetState extends State<_HalaqohSubstituteSheet> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -2235,33 +2385,33 @@ class _HalaqohSubstituteSheetState extends State<_HalaqohSubstituteSheet> {
               child: _loadingUsers
                   ? const Center(child: CircularProgressIndicator())
                   : options.isEmpty
-                      ? const Center(child: Text('User tidak ditemukan'))
-                      : ListView.builder(
-                          itemCount: options.length,
-                          itemBuilder: (context, index) {
-                            final teacher = options[index];
-                            final selected =
-                                _selectedTeacherId == teacher['id']?.toString();
-                            return ListTile(
-                              onTap: () => setState(() {
-                                _selectedTeacherId =
-                                    teacher['id']?.toString() ?? '';
-                              }),
-                              leading: Icon(
-                                selected
-                                    ? Icons.radio_button_checked_rounded
-                                    : Icons.radio_button_off_rounded,
-                              ),
-                              title: Text(_asString(teacher['name'])),
-                              subtitle: Text(
-                                _asString(
-                                  teacher['email'] ?? teacher['username'],
-                                  fallback: '-',
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                  ? const Center(child: Text('User tidak ditemukan'))
+                  : ListView.builder(
+                      itemCount: options.length,
+                      itemBuilder: (context, index) {
+                        final teacher = options[index];
+                        final selected =
+                            _selectedTeacherId == teacher['id']?.toString();
+                        return ListTile(
+                          onTap: () => setState(() {
+                            _selectedTeacherId =
+                                teacher['id']?.toString() ?? '';
+                          }),
+                          leading: Icon(
+                            selected
+                                ? Icons.radio_button_checked_rounded
+                                : Icons.radio_button_off_rounded,
+                          ),
+                          title: Text(_asString(teacher['name'])),
+                          subtitle: Text(
+                            _asString(
+                              teacher['email'] ?? teacher['username'],
+                              fallback: '-',
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
@@ -2311,6 +2461,7 @@ class _HalaqohSubstituteSheetState extends State<_HalaqohSubstituteSheet> {
                 DropdownMenuItem(value: 'Izin', child: Text('Izin')),
                 DropdownMenuItem(value: 'Sakit', child: Text('Sakit')),
                 DropdownMenuItem(value: 'Alpha', child: Text('Alpha')),
+                DropdownMenuItem(value: 'Dinas', child: Text('Dinas')),
               ],
               onChanged: (value) => setState(() => _status = value ?? 'Izin'),
             ),
@@ -2333,7 +2484,8 @@ class _HalaqohSubstituteSheetState extends State<_HalaqohSubstituteSheet> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: _saving ||
+                    onPressed:
+                        _saving ||
                             _selectedTeacherId.isEmpty ||
                             _sessions.isEmpty
                         ? null

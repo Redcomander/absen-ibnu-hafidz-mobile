@@ -20,6 +20,13 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _initializedRemember = false;
 
   @override
+  void dispose() {
+    _usernameCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     if (!_initializedRemember) {
@@ -31,86 +38,131 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 18),
-              Container(
-                width: 64,
-                height: 64,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppTheme.brand.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: AppTheme.brand.withValues(alpha: 0.20),
+        child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+            child: Center(
+                child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 24),
+                  Container(
+                    width: 64,
+                    height: 64,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.brand.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: AppTheme.brand.withValues(alpha: 0.20),
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        'assets/branding/favicon.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    'assets/branding/favicon.png',
-                    fit: BoxFit.contain,
+                  const SizedBox(height: 16),
+                  const Text('IBNU HAFIDZ',
+                      style: TextStyle(
+                          color: AppTheme.brand,
+                          letterSpacing: 3,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 36),
+                  const Text('Selamat Datang',
+                      style: TextStyle(
+                          fontSize: 34,
+                          height: 1.2,
+                          fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Satu ruang untuk mendampingi\nperjalanan belajar santri.',
+                    style: TextStyle(color: AppTheme.muted, height: 1.7),
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text('Selamat Datang',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 6),
-              const Text(
-                'Masuk ke sistem absensi Ibnu Hafidz',
-                style: TextStyle(color: AppTheme.muted),
-              ),
-              const SizedBox(height: 28),
-              TextField(
-                controller: _usernameCtrl,
-                decoration: const InputDecoration(labelText: 'Username'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _passwordCtrl,
-                obscureText: !_showPassword,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  suffixIcon: IconButton(
-                    onPressed: () =>
-                        setState(() => _showPassword = !_showPassword),
-                    icon: Icon(_showPassword
-                        ? Icons.visibility_off
-                        : Icons.visibility),
+                  const SizedBox(height: 28),
+                  TextField(
+                    controller: _usernameCtrl,
+                    enabled: !_loading,
+                    autofillHints: const [AutofillHints.username],
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                        labelText: 'Username',
+                        prefixIcon: Icon(Icons.person_outline_rounded)),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _passwordCtrl,
+                    enabled: !_loading,
+                    autofillHints: const [AutofillHints.password],
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) {
+                      if (!_loading) _submit();
+                    },
+                    obscureText: !_showPassword,
+                    decoration: InputDecoration(
+                      labelText: 'Kata sandi',
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
+                      suffixIcon: IconButton(
+                        tooltip: _showPassword
+                            ? 'Sembunyikan kata sandi'
+                            : 'Tampilkan kata sandi',
+                        onPressed: () =>
+                            setState(() => _showPassword = !_showPassword),
+                        icon: Icon(_showPassword
+                            ? Icons.visibility_off
+                            : Icons.visibility),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  CheckboxListTile(
+                    value: _rememberMe,
+                    onChanged: (value) {
+                      setState(() => _rememberMe = value ?? true);
+                    },
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: const Text('Ingat perangkat ini'),
+                    subtitle: const Text(
+                      'Tetap bisa masuk dengan sesi tersimpan saat koneksi sedang buruk.',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : _submit,
+                        child: _loading
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : const Text('Masuk'),
+                      )),
+                  const SizedBox(height: 28),
+                  const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.verified_user_outlined,
+                            size: 18, color: AppTheme.muted),
+                        SizedBox(width: 10),
+                        Expanded(
+                            child: Text(
+                                'Gunakan akun yang diberikan oleh pengelola pesantren.',
+                                style: TextStyle(
+                                    color: AppTheme.muted,
+                                    fontSize: 12,
+                                    height: 1.6))),
+                      ]),
+                ],
               ),
-              const SizedBox(height: 10),
-              CheckboxListTile(
-                value: _rememberMe,
-                onChanged: (value) {
-                  setState(() => _rememberMe = value ?? true);
-                },
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                title: const Text('Remember me'),
-                subtitle: const Text(
-                  'Tetap bisa masuk dengan sesi tersimpan saat koneksi sedang buruk.',
-                ),
-              ),
-              const SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: _loading ? null : _submit,
-                child: _loading
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Text('Masuk'),
-              ),
-            ],
-          ),
-        ),
+            ))),
       ),
     );
   }

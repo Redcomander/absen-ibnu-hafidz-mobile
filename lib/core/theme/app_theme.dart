@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color brand = Color(0xFF0F766E);
-  static const Color accent = Color(0xFFF4C534);
+  static const Color brand = Color(0xFF143E35);
+  static const Color accent = Color(0xFFD8B56A);
   static const Color info = Color(0xFF4F46E5);
-  static const Color ink = Color(0xFF111827);
-  static const Color muted = Color(0xFF6B7280);
-  static const Color bg = Color(0xFFF6F7FB);
+  static const Color ink = Color(0xFF203C33);
+  static const Color muted = Color(0xFF64736B);
+  static const Color bg = Color(0xFFF7F7F0);
 
   static ThemeData get light {
     final scheme = ColorScheme.fromSeed(
@@ -18,6 +18,7 @@ class AppTheme {
 
     final base = ThemeData(
       useMaterial3: true,
+      fontFamily: 'PlusJakartaSans',
       colorScheme: scheme,
       scaffoldBackgroundColor: bg,
     );

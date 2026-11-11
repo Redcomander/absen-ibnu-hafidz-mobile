@@ -1,17 +1,24 @@
-import 'dart:convert';
+import 'json_codec.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
 class OfflineCacheStore {
-  static const _prefix = 'offline_api_cache_v1::';
+  static const _prefix = 'offline_api_cache_v2::';
+  static String scope = 'anonymous';
 
-  static String buildKey(String path, {Map<String, String>? query}) {
-    final entries = (query ?? <String, String>{}).entries
-        .where((entry) => entry.value.trim().isNotEmpty)
-        .toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+  static String buildKey(
+    String path, {
+    Map<String, String>? query,
+    String? account,
+  }) {
+    final prefix = '$_prefix${account ?? scope}::';
+    final entries =
+        (query ?? <String, String>{}).entries
+            .where((entry) => entry.value.trim().isNotEmpty)
+            .toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
 
-    if (entries.isEmpty) return '$_prefix$path';
+    if (entries.isEmpty) return '$prefix$path';
 
     final queryString = entries
         .map(
@@ -20,18 +27,20 @@ class OfflineCacheStore {
         )
         .join('&');
 
-    return '$_prefix$path?$queryString';
+    return '$prefix$path?$queryString';
   }
 
   static Future<void> write(
     String path,
     Map<String, dynamic> payload, {
     Map<String, String>? query,
+    String? account,
   }) async {
+    final key = buildKey(path, query: query, account: account);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      buildKey(path, query: query),
-      jsonEncode({
+      key,
+      await BackgroundJson.encode({
         'saved_at': DateTime.now().toIso8601String(),
         'payload': payload,
       }),
@@ -41,12 +50,13 @@ class OfflineCacheStore {
   static Future<Map<String, dynamic>?> read(
     String path, {
     Map<String, String>? query,
+    String? account,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(buildKey(path, query: query));
+    final raw = prefs.getString(buildKey(path, query: query, account: account));
     if (raw == null || raw.trim().isEmpty) return null;
 
-    final decoded = jsonDecode(raw);
+    final decoded = await BackgroundJson.decode(raw);
     if (decoded is! Map) return null;
 
     final payload = _normalizeMap(decoded['payload']);

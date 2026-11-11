@@ -13,11 +13,72 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ibnu_hafidz_flutter/core/network/api_client.dart';
 import 'package:ibnu_hafidz_flutter/features/auth/auth_controller.dart';
 import 'package:ibnu_hafidz_flutter/features/home/home_shell.dart';
+import 'package:ibnu_hafidz_flutter/features/home/floating_navigation_bar.dart';
+import 'package:ibnu_hafidz_flutter/features/home/dashboard_screen.dart';
+import 'package:ibnu_hafidz_flutter/features/auth/login_screen.dart';
+import 'package:ibnu_hafidz_flutter/core/theme/app_theme.dart';
 import 'package:ibnu_hafidz_flutter/features/settings/app_settings_controller.dart';
 import 'package:ibnu_hafidz_flutter/main.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('dashboard fits narrow screens with larger text', (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final auth = AuthController()
+      ..user = {'name': 'Ustadz dengan nama panjang'};
+    final settings = AppSettingsController();
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AuthController>.value(value: auth),
+          ChangeNotifierProvider<AppSettingsController>.value(value: settings),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(1.5)),
+            child: Scaffold(
+              body: DashboardScreen(
+                onOpenSchedule: () {},
+                onOpenSettings: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    auth.dispose();
+    settings.dispose();
+  });
+
+  testWidgets('login remains scrollable on a small screen with keyboard', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 480);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final auth = AuthController()..isLoading = false;
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AuthController>.value(
+        value: auth,
+        child: MaterialApp(theme: AppTheme.light, home: const LoginScreen()),
+      ),
+    );
+    await tester.ensureVisible(find.text('Masuk'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Masuk').hitTestable(), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    auth.dispose();
+  });
 
   test('extracts download filename from response headers', () {
     expect(
@@ -35,8 +96,9 @@ void main() {
     expect(ApiClient.extractFilenameFromDisposition(null), isNull);
   });
 
-  testWidgets('shows login screen when no session is saved',
-      (WidgetTester tester) async {
+  testWidgets('shows login screen when no session is saved', (
+    WidgetTester tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
 
     await tester.pumpWidget(const IbnuHafidzApp());
@@ -46,15 +108,16 @@ void main() {
     expect(find.text('Masuk'), findsOneWidget);
   });
 
-  testWidgets('hides stats tab when user lacks stats permissions',
-      (WidgetTester tester) async {
+  testWidgets('hides stats tab when user lacks stats permissions', (
+    WidgetTester tester,
+  ) async {
     final auth = AuthController()
       ..isLoading = false
       ..isAuthenticated = true
       ..user = {
         'name': 'Guru',
         'roles': [
-          {'name': 'teacher', 'permissions': []}
+          {'name': 'teacher', 'permissions': []},
         ],
       };
 
@@ -72,11 +135,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Stats'), findsNothing);
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(FloatingNavigationBar), findsOneWidget);
+    expect(find.text('Beranda'), findsOneWidget);
+    expect(find.text('Pengaturan'), findsOneWidget);
+    await tester.tap(find.text('Pengaturan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Pengaturan Sinkronisasi'), findsOneWidget);
+    expect(find.text('Control Center'), findsNothing);
   });
 
-  testWidgets('shows stats tab when user has stats permission',
-      (WidgetTester tester) async {
+  testWidgets('shows stats tab when user has stats permission', (
+    WidgetTester tester,
+  ) async {
     final auth = AuthController()
       ..isLoading = false
       ..isAuthenticated = true
@@ -86,9 +156,9 @@ void main() {
           {
             'name': 'teacher',
             'permissions': [
-              {'name': 'absensi.view'}
-            ]
-          }
+              {'name': 'absensi.view'},
+            ],
+          },
         ],
       };
 
@@ -105,6 +175,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Stats'), findsOneWidget);
+    expect(find.text('Rekapan'), findsOneWidget);
   });
 }

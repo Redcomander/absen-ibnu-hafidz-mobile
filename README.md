@@ -46,7 +46,7 @@ This repository contains the Android-ready mobile client used by teachers, admin
 ## Backend Target
 
 The release build is configured to use:
-- **Host:** `https://beta.ibnuhafidz.ponpes.id`
+- **Host:** `https://ibnuhafidz.ponpes.id` (default for test and release builds)
 - **Prefix:** `/api`
 
 Configuration lives in [`lib/core/config/app_config.dart`](lib/core/config/app_config.dart).
@@ -129,6 +129,10 @@ See [`android/app/build.gradle.kts`](android/app/build.gradle.kts) for the curre
 6. Promote to **Production** after tester approval.
 
 ## Notes
+
+See [Offline sync behavior and deployment](docs/OFFLINE_SYNC.md) for per-account
+network settings, Android background timing, queue recovery, and the required
+Halaqoh backend update.
 
 - This app is intended for **internal operational use** by the institution.
 - The backend API structure remains unchanged to ensure web compatibility.
