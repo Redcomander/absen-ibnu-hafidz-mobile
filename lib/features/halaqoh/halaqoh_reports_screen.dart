@@ -9,6 +9,7 @@ import '../../core/network/api_client.dart';
 import '../../core/network/offline_cache_store.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_controller.dart';
+import '../stats/saved_report_filters.dart';
 
 Map<String, dynamic> _map(dynamic value) =>
     value is Map ? Map<String, dynamic>.from(value) : {};
@@ -277,6 +278,26 @@ class _HalaqohReportsScreenState extends State<HalaqohReportsScreen> {
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
+          SavedReportFilters(
+            report: 'halaqoh',
+            capture: () => {..._query, 'scope': _scope},
+            apply: (filters) {
+              final start = DateTime.tryParse('${filters['start_date']}');
+              final end = DateTime.tryParse('${filters['end_date']}');
+              if (start == null || end == null || end.isBefore(start)) return;
+              setState(() {
+                _start = start;
+                _end = end;
+                _teacher = '${filters['teacher_id'] ?? ''}';
+                _gender = '${filters['gender'] ?? ''}';
+                _scope = filters['scope'] == 'teachers'
+                    ? 'teachers'
+                    : 'students';
+              });
+              _load();
+            },
+          ),
+
           Text(
             'Rekapan Halaqoh ${student ? 'Santri' : 'Guru'}',
             style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22),

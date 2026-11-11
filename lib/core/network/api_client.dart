@@ -374,6 +374,8 @@ class ApiClient {
     return RegExp(
           r'^/halaqoh/(attendance|teacher-attendance)/\d+$',
         ).hasMatch(path) ||
+        path == '/dashboard/stats' ||
+        RegExp(r'^/students/\d+/progress$').hasMatch(path) ||
         path == '/schedules' ||
         path == '/attendance' ||
         path == '/attendance/history' ||

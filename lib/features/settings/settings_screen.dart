@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 
 import '../auth/auth_controller.dart';
 import 'app_settings_controller.dart';
+import 'user_preferences.dart';
+import 'storage_screen.dart';
+import '../help/help_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -61,10 +64,79 @@ class SettingsScreen extends StatelessWidget {
     final auth = context.watch<AuthController>();
     final settings = context.watch<AppSettingsController>();
     final isSuperAdmin = _isSuperAdmin(auth.user);
+    final preferences = context.watch<UserPreferences?>();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
+        Card(
+          margin: const EdgeInsets.only(bottom: 14),
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.help_outline),
+                title: const Text('Pusat bantuan'),
+                subtitle: const Text(
+                  'Panduan offline, pengajuan, keamanan dan pelaporan masalah',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const HelpScreen()),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.storage_outlined),
+                title: const Text('Penyimpanan offline'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const StorageScreen()),
+                ),
+              ),
+              if (preferences != null) ...[
+                SwitchListTile(
+                  title: const Text('Kunci biometrik / PIN perangkat'),
+                  subtitle: const Text(
+                    'Kunci ketika aplikasi masuk latar belakang. Aktifkan PIN/pola perangkat terlebih dahulu.',
+                  ),
+                  value: preferences.lockEnabled,
+                  onChanged: (value) async {
+                    final success = await preferences.setLock(value);
+                    if (!success && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Verifikasi belum berhasil. Pastikan PIN/pola perangkat aktif, lalu coba lagi.',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                SwitchListTile(
+                  title: const Text('Kontras tinggi'),
+                  value: preferences.highContrast,
+                  onChanged: preferences.setContrast,
+                ),
+                ListTile(
+                  title: const Text('Ukuran teks'),
+                  subtitle: Text(
+                    'Tambahan ${(preferences.textScale * 100).round()}% dari ukuran sistem',
+                  ),
+                ),
+                Slider(
+                  label: '${(preferences.textScale * 100).round()}%',
+                  value: preferences.textScale,
+                  min: 1,
+                  max: 1.5,
+                  divisions: 5,
+                  onChanged: preferences.setScale,
+                ),
+              ],
+            ],
+          ),
+        ),
         const Text(
           'Pengaturan Sinkronisasi',
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),

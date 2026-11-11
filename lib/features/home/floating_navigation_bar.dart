@@ -213,9 +213,11 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
                                             widget.onSelected(index);
                                           }
                                         },
-                                        splashColor: AppTheme.accent.withValues(
-                                          alpha: .15,
-                                        ),
+                                        splashFactory: NoSplash.splashFactory,
+                                        overlayColor:
+                                            const WidgetStatePropertyAll(
+                                              Colors.transparent,
+                                            ),
                                         child: ExcludeSemantics(
                                           child: Column(
                                             mainAxisAlignment:

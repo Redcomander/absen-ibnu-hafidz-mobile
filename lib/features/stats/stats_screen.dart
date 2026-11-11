@@ -11,6 +11,7 @@ import '../../core/network/api_client.dart';
 import '../../core/network/offline_cache_store.dart';
 import '../../core/theme/section_header.dart';
 import '../auth/auth_controller.dart';
+import 'saved_report_filters.dart';
 import '../halaqoh/halaqoh_reports_screen.dart';
 import '../settings/app_settings_controller.dart';
 
@@ -612,6 +613,42 @@ class _StatsScreenState extends State<StatsScreen> {
             ],
           ),
           const SizedBox(height: 12),
+          SavedReportFilters(
+            report: 'attendance',
+            capture: () => {
+              'type': _type,
+              'scope': _scope,
+              'teacher': _teacherFilter,
+              'kelas': _kelasFilter,
+              'gender': _genderFilter,
+              'start': _fmtApiDate(_startDate),
+              'end': _fmtApiDate(_endDate),
+              'search': _search,
+            },
+            apply: (filters) {
+              final type = filters['type']?.toString();
+              if (!typeSegments.any((segment) => segment.value == type)) return;
+              final start = DateTime.tryParse('${filters['start']}');
+              final end = DateTime.tryParse('${filters['end']}');
+              if (start == null || end == null || end.isBefore(start)) return;
+              _searchDebounce?.cancel();
+              setState(() {
+                _type = type!;
+                _scope =
+                    ['all', 'student', 'teacher'].contains(filters['scope'])
+                    ? filters['scope'] as String
+                    : 'all';
+                _teacherFilter = '${filters['teacher'] ?? ''}';
+                _kelasFilter = '${filters['kelas'] ?? ''}';
+                _genderFilter = '${filters['gender'] ?? ''}';
+                _startDate = start;
+                _endDate = end;
+                _search = '${filters['search'] ?? ''}';
+                _searchController.text = _search;
+              });
+              _load(resetHistory: true);
+            },
+          ),
           _buildFilterCard(),
           const SizedBox(height: 12),
           if (_showingOfflineData)
