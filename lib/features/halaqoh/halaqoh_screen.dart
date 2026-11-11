@@ -11,6 +11,7 @@ import '../auth/auth_controller.dart';
 import '../settings/app_settings_controller.dart';
 import 'halaqoh_reports_screen.dart';
 import 'membership_screen.dart';
+import '../../core/theme/attendance_widgets.dart';
 
 const List<String> _halaqohSessions = ['Shubuh', 'Ashar', 'Isya'];
 
@@ -1813,14 +1814,10 @@ class _HalaqohStudentAttendanceSheetState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Absensi Santri Halaqoh',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${_asString(widget.group['teacher_name'])} • ${_formatDisplayDate(widget.date)}',
-                    style: const TextStyle(color: Colors.black54),
+                  AttendanceHeading(
+                    title: 'Absensi Santri Halaqoh',
+                    subtitle:
+                        '${_asString(widget.group['teacher_name'])}\n${_formatDisplayDate(widget.date)}',
                   ),
                 ],
               ),
@@ -1869,13 +1866,14 @@ class _HalaqohStudentAttendanceSheetState
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
+                    AttendanceSummary(records: currentRecords),
                     ...currentRecords.map((record) {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF9FAFB),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: const Color(0xFFE5E7EB)),
                         ),
                         child: Column(
@@ -1888,34 +1886,11 @@ class _HalaqohStudentAttendanceSheetState
                               ),
                             ),
                             const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: const ['hadir', 'izin', 'sakit', 'alpa']
-                                  .map((status) => status)
-                                  .map((status) {
-                                    final selected = record['status'] == status;
-                                    final color = _statusColor(status);
-                                    return ChoiceChip(
-                                      label: Text(status.toUpperCase()),
-                                      selected: selected,
-                                      onSelected: (_) {
-                                        setState(
-                                          () => record['status'] = status,
-                                        );
-                                      },
-                                      selectedColor: color.withValues(
-                                        alpha: 0.15,
-                                      ),
-                                      labelStyle: TextStyle(
-                                        color: selected
-                                            ? color
-                                            : const Color(0xFF6B7280),
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    );
-                                  })
-                                  .toList(),
+                            AttendanceStatusPicker(
+                              value: '${record['status'] ?? ''}',
+                              enabled: !_saving,
+                              onChanged: (status) =>
+                                  setState(() => record['status'] = status),
                             ),
                             const SizedBox(height: 8),
                             TextFormField(
@@ -2108,14 +2083,13 @@ class _HalaqohTeacherAttendanceSheetState
             const SizedBox(height: 10),
             const Icon(Icons.drag_handle_rounded, color: Colors.grey),
             const SizedBox(height: 8),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Absensi Guru Halaqoh',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: AttendanceHeading(
+                title: 'Absensi Guru Halaqoh',
+                subtitle:
+                    '${_asString(widget.group['teacher_name'])}\n${_formatDisplayDate(widget.date)}',
+                icon: Icons.badge_outlined,
               ),
             ),
             const SizedBox(height: 12),
@@ -2163,18 +2137,16 @@ class _HalaqohTeacherAttendanceSheetState
                       'Guru: ${_asString(_asMap(currentInfo['effective_teacher'])['name'], fallback: _asString(widget.group['teacher_name']))}',
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: _status,
-                      decoration: const InputDecoration(labelText: 'Status'),
-                      items: const [
-                        DropdownMenuItem(value: 'Hadir', child: Text('Hadir')),
-                        DropdownMenuItem(value: 'Izin', child: Text('Izin')),
-                        DropdownMenuItem(value: 'Sakit', child: Text('Sakit')),
-                        DropdownMenuItem(value: 'Alpha', child: Text('Alpha')),
-                        DropdownMenuItem(value: 'Dinas', child: Text('Dinas')),
-                      ],
-                      onChanged: (value) =>
-                          setState(() => _status = value ?? 'Hadir'),
+                    const Text(
+                      'Status kehadiran',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 8),
+                    AttendanceStatusPicker(
+                      value: _status,
+                      teacher: true,
+                      enabled: !_saving,
+                      onChanged: (status) => setState(() => _status = status),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(

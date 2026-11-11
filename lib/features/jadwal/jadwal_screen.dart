@@ -8,6 +8,9 @@ import '../../core/network/api_client.dart';
 import '../../core/theme/section_header.dart';
 import '../../core/network/offline_cache_store.dart';
 import 'schedule_repository.dart';
+import 'schedule_target.dart';
+import '../../core/theme/attendance_widgets.dart';
+import '../../core/theme/app_theme.dart';
 import 'attendance_repository.dart';
 import '../auth/auth_controller.dart';
 import '../halaqoh/halaqoh_screen.dart';
@@ -20,13 +23,16 @@ typedef _ScheduleListRow = ({
 });
 
 class JadwalScreen extends StatefulWidget {
-  const JadwalScreen({super.key});
+  const JadwalScreen({super.key, this.target});
+  final ScheduleTarget? target;
 
   @override
   State<JadwalScreen> createState() => _JadwalScreenState();
 }
 
 class _JadwalScreenState extends State<JadwalScreen> {
+  ScheduleTarget? _focusedTarget;
+  final _scrollController = ScrollController();
   String _contentTab = 'jadwal';
   String _type = 'formal';
   String _selectedDate = _todayString();
@@ -55,7 +61,37 @@ class _JadwalScreenState extends State<JadwalScreen> {
   @override
   void initState() {
     super.initState();
+    _applyTarget();
     _load();
+  }
+
+  void _applyTarget() {
+    final target = widget.target;
+    if (target == null) return;
+    _focusedTarget = target;
+    _contentTab = 'jadwal';
+    _type = target.type;
+    _selectedDate = _todayString();
+    _search = '';
+    _searchCtrl.clear();
+    _gender = '';
+    _day = '';
+    _showFilters = false;
+  }
+
+  @override
+  void didUpdateWidget(covariant JadwalScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.target != null && !identical(oldWidget.target, widget.target)) {
+      _searchDebounce?.cancel();
+      _applyTarget();
+      _load();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+      });
+    }
   }
 
   void _observeConnectivity() {
@@ -77,6 +113,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
   void dispose() {
     _searchDebounce?.cancel();
     _searchCtrl.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -690,6 +727,12 @@ class _JadwalScreenState extends State<JadwalScreen> {
     final showRamadhan = context.select<AppSettingsController, bool>(
       (s) => s.isRamadhanTabEnabled,
     );
+    final focused = _focusedTarget?.type == _type
+        ? _items
+              .whereType<Map>()
+              .where((item) => '${item['id']}' == '${_focusedTarget!.id}')
+              .firstOrNull
+        : null;
     final groups = _groupedItems();
     if (!identical(_renderGroups, groups)) {
       _renderGroups = groups;
@@ -710,8 +753,55 @@ class _JadwalScreenState extends State<JadwalScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: CustomScrollView(
+        controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
+          if (_contentTab == 'jadwal' && focused != null)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.my_location_rounded,
+                          color: AppTheme.brand,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Jadwal yang dipilih - Hari ini',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.brand,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Tutup sorotan jadwal',
+                          onPressed: () =>
+                              setState(() => _focusedTarget = null),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
+                    ),
+                    _buildScheduleCard(Map<String, dynamic>.from(focused)),
+                  ],
+                ),
+              ),
+            ),
+          if (_focusedTarget?.type == _type && focused == null && !_loading)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Text(
+                  'Jadwal yang dipilih belum tersedia. Muat ulang atau periksa daftar jadwal di bawah.',
+                ),
+              ),
+            ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
             sliver: SliverToBoxAdapter(
@@ -928,6 +1018,10 @@ class _JadwalScreenState extends State<JadwalScreen> {
                   final row = _renderRows[index];
                   if (row.day != null) {
                     return _buildDayHeader(row.day!, row.count);
+                  }
+                  if (focused != null &&
+                      '${row.item!['id']}' == '${focused['id']}') {
+                    return const SizedBox.shrink();
                   }
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
@@ -1225,19 +1319,12 @@ class _StudentAttendanceSheetState extends State<_StudentAttendanceSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Absensi Siswa',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  AttendanceHeading(
+                    title: 'Absensi Santri',
+                    subtitle:
+                        '${lesson['name'] ?? 'Pelajaran'}\n${kelas['nama'] ?? '-'}, ${kelas['tingkat'] ?? '-'}',
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    lesson['name']?.toString() ?? 'Pelajaran',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${kelas['nama'] ?? '-'} ${kelas['tingkat'] ?? ''}'.trim(),
-                  ),
+                  const SizedBox(height: 12),
                   const SizedBox(height: 2),
                   Row(
                     children: [
@@ -1254,7 +1341,7 @@ class _StudentAttendanceSheetState extends State<_StudentAttendanceSheet> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  AttendanceSummary(records: _students),
                   OutlinedButton.icon(
                     onPressed: _loading
                         ? null
@@ -1363,23 +1450,13 @@ class _StudentAttendanceSheetState extends State<_StudentAttendanceSheet> {
                                   style: const TextStyle(color: Colors.grey),
                                 ),
                                 const SizedBox(height: 10),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: ['hadir', 'izin', 'sakit', 'alpa']
-                                      .map((status) {
-                                        final selected =
-                                            student['status'] == status;
-                                        return ChoiceChip(
-                                          label: Text(status),
-                                          selected: selected,
-                                          onSelected: (_) => setState(() {
-                                            _editVersion++;
-                                            student['status'] = status;
-                                          }),
-                                        );
-                                      })
-                                      .toList(),
+                                AttendanceStatusPicker(
+                                  value: '${student['status'] ?? ''}',
+                                  enabled: !_saving,
+                                  onChanged: (status) => setState(() {
+                                    _editVersion++;
+                                    student['status'] = status;
+                                  }),
                                 ),
                                 const SizedBox(height: 10),
                                 TextFormField(
@@ -1467,6 +1544,12 @@ class _TeacherAttendanceSheetState extends State<_TeacherAttendanceSheet> {
     _date = widget.initialDate;
   }
 
+  @override
+  void dispose() {
+    _notesCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -1525,7 +1608,7 @@ class _TeacherAttendanceSheetState extends State<_TeacherAttendanceSheet> {
 
     return SafeArea(
       child: Container(
-        height: media.size.height * 0.55,
+        height: media.size.height * 0.78,
         padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -1541,9 +1624,11 @@ class _TeacherAttendanceSheetState extends State<_TeacherAttendanceSheet> {
                   child: Icon(Icons.drag_handle_rounded, color: Colors.grey),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Absensi Guru',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                AttendanceHeading(
+                  title: 'Absensi Guru',
+                  subtitle:
+                      '${(widget.schedule['assignment'] as Map?)?['teacher']?['name'] ?? 'Guru pengampu'}\n${(widget.schedule['assignment'] as Map?)?['lesson']?['name'] ?? (widget.schedule['assignment'] as Map?)?['diniyyah_lesson']?['name'] ?? 'Pelajaran'}',
+                  icon: Icons.badge_outlined,
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
@@ -1552,19 +1637,26 @@ class _TeacherAttendanceSheetState extends State<_TeacherAttendanceSheet> {
                   label: Text('Tanggal: $_date'),
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _status,
-                  decoration: const InputDecoration(labelText: 'Status'),
-                  items: const ['Hadir', 'Izin', 'Sakit', 'Alpha', 'Dinas']
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _status = v ?? 'Hadir'),
+                const Text(
+                  'Status kehadiran',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                AttendanceStatusPicker(
+                  value: _status,
+                  teacher: true,
+                  enabled: !_saving,
+                  onChanged: (status) => setState(() => _status = status),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _notesCtrl,
                   maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'Catatan'),
+                  decoration: const InputDecoration(
+                    labelText: 'Catatan (opsional)',
+                    hintText: 'Tambahkan keterangan bila diperlukan',
+                    alignLabelWithHint: true,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Row(

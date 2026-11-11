@@ -4,6 +4,8 @@ import '../../core/access/access.dart';
 import '../../core/network/api_client.dart';
 import '../auth/auth_controller.dart';
 import '../../core/theme/text_prompt.dart';
+import '../../core/theme/attendance_widgets.dart';
+import 'request_review_card.dart';
 
 class HalaqohReviewScreen extends StatefulWidget {
   const HalaqohReviewScreen({super.key});
@@ -126,56 +128,21 @@ class _HalaqohReviewScreenState extends State<HalaqohReviewScreen> {
               padding: const EdgeInsets.all(16),
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
-                const Text(
-                  'Peninjauan memerlukan koneksi internet. Data anggota lama tetap berlaku sampai pengajuan disetujui.',
+                AttendanceHeading(
+                  title: 'Tinjau perubahan anggota',
+                  subtitle:
+                      '${_requests.where((r) => r['status'] == 'pending').length} pengajuan menunggu keputusan.\nAnggota berubah hanya setelah Anda menyetujui. Peninjauan memerlukan internet.',
+                  icon: Icons.rule_rounded,
                 ),
                 const SizedBox(height: 16),
                 if (_error != null) Text(_error!),
                 if (_requests.isEmpty && _error == null)
                   const Text('Belum ada pengajuan.'),
                 for (final r in _requests)
-                  Card(
-                    margin: const EdgeInsets.only(bottom: 14),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${mapValue(r['teacher'])['name'] ?? 'Guru #${r['teacher_id']}'} • ${r['status']}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Text('Jenis: ${r['request_type'] ?? '-'}'),
-                          Text(
-                            'Anggota sebelumnya: ${listValue(r['previous_student_details']).map((s) => s['nama_lengkap']).join(', ')}',
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Anggota diajukan: ${listValue(r['student_details']).map((s) => s['nama_lengkap']).join(', ')}',
-                          ),
-                          if ((r['reason'] ?? '').toString().isNotEmpty)
-                            Text('Catatan: ${r['reason']}'),
-                          if (r['status'] == 'pending')
-                            Wrap(
-                              spacing: 12,
-                              children: [
-                                OutlinedButton(
-                                  onPressed: _busy
-                                      ? null
-                                      : () => _review(r, false),
-                                  child: const Text('Tolak'),
-                                ),
-                                FilledButton(
-                                  onPressed: _busy
-                                      ? null
-                                      : () => _review(r, true),
-                                  child: const Text('Setujui'),
-                                ),
-                              ],
-                            ),
-                        ],
-                      ),
-                    ),
+                  HalaqohRequestCard(
+                    request: r,
+                    busy: _busy,
+                    onReview: (approve) => _review(r, approve),
                   ),
               ],
             ),

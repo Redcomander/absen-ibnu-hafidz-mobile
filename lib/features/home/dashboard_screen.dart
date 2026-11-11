@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_controller.dart';
 import 'user_dashboard.dart';
+import '../jadwal/schedule_target.dart';
 import '../../core/access/access.dart';
 import '../halaqoh/review_screen.dart';
 import '../students/students_screen.dart';
@@ -16,9 +17,11 @@ class DashboardScreen extends StatelessWidget {
     required this.onOpenSchedule,
     required this.onOpenSettings,
     this.onOpenStats,
+    this.onOpenScheduleCard,
   });
 
   final VoidCallback onOpenSchedule;
+  final ValueChanged<ScheduleTarget>? onOpenScheduleCard;
   final VoidCallback onOpenSettings;
   final VoidCallback? onOpenStats;
 
@@ -50,7 +53,10 @@ class DashboardScreen extends StatelessWidget {
           style: TextStyle(color: AppTheme.muted, height: 1.6),
         ),
         const SizedBox(height: 28),
-        UserDashboard(onOpenSchedule: onOpenSchedule),
+        UserDashboard(
+          onOpenSchedule: onOpenSchedule,
+          onOpenScheduleCard: onOpenScheduleCard,
+        ),
         const SizedBox(height: 20),
         Card(
           child: Padding(

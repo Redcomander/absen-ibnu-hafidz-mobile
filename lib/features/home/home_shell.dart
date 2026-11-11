@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../auth/auth_controller.dart';
 import '../jadwal/jadwal_screen.dart';
+import '../jadwal/schedule_target.dart';
 import '../settings/settings_screen.dart';
 import '../stats/stats_screen.dart';
 import '../../core/theme/app_theme.dart';
@@ -35,6 +36,7 @@ class _HomeShellState extends State<HomeShell>
     }
   }
 
+  ScheduleTarget? _scheduleTarget;
   int _index = 0;
   @override
   void initState() {
@@ -119,10 +121,14 @@ class _HomeShellState extends State<HomeShell>
     final pages = [
       DashboardScreen(
         onOpenSchedule: () => _selectTab(1),
+        onOpenScheduleCard: (target) {
+          setState(() => _scheduleTarget = target);
+          _selectTab(1);
+        },
         onOpenSettings: () => _selectTab(canViewStats ? 3 : 2),
         onOpenStats: canViewStats ? () => _selectTab(2) : null,
       ),
-      const JadwalScreen(),
+      JadwalScreen(target: _scheduleTarget),
       if (canViewStats) const StatsScreen(),
       const SettingsScreen(),
     ];

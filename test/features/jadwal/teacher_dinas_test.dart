@@ -53,7 +53,7 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('Absensi guru'));
         await tester.pumpAndSettle();
-        await tester.tap(find.byType(DropdownButtonFormField<String>).last);
+        await tester.ensureVisible(find.text('Dinas'));
         await tester.pumpAndSettle();
         expect(find.text('Dinas Luar'), findsNothing);
         await tester.tap(find.text('Dinas').last);

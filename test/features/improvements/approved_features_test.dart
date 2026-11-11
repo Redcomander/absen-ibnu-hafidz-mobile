@@ -270,6 +270,8 @@ void main() {
             () => Future<void>.delayed(const Duration(milliseconds: 40)),
           );
           await tester.pumpAndSettle();
+          await tester.ensureVisible(find.text('Tolak').first);
+          await tester.pumpAndSettle();
           await tester.tap(find.text('Tolak').first);
           await tester.pumpAndSettle();
           await tester.tap(find.text('Tolak').last);
@@ -277,6 +279,8 @@ void main() {
           expect(find.text('Wajib diisi'), findsOneWidget);
           expect(posts, 0);
           await tester.tap(find.text('Batal'));
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(find.text('Setujui').first);
           await tester.pumpAndSettle();
           await tester.tap(find.text('Setujui').first);
           await tester.pumpAndSettle();

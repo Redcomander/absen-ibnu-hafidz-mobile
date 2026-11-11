@@ -1,15 +1,20 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/access/access.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_controller.dart';
+import '../jadwal/schedule_target.dart';
 
 class UserDashboard extends StatefulWidget {
-  const UserDashboard({super.key, required this.onOpenSchedule});
+  const UserDashboard({
+    super.key,
+    required this.onOpenSchedule,
+    this.onOpenScheduleCard,
+  });
   final VoidCallback onOpenSchedule;
+  final ValueChanged<ScheduleTarget>? onOpenScheduleCard;
   @override
   State<UserDashboard> createState() => _UserDashboardState();
 }
@@ -120,7 +125,7 @@ class _UserDashboardState extends State<UserDashboard> {
             );
             return DropdownMenuItem(
               value: date,
-              child: Text(DateFormat('MM/yyyy').format(date)),
+              child: Text(indonesianMonthYear(date)),
             );
           }),
           onChanged: (v) {
@@ -212,7 +217,14 @@ class _UserDashboardState extends State<UserDashboard> {
                 subtitle: Text(
                   '${s['module']} • ${mapValue(mapValue(s['assignment'])['kelas'])['nama'] ?? '-'}, ${mapValue(mapValue(s['assignment'])['kelas'])['tingkat'] ?? '-'}\n${s['start_time'] ?? '-'} – ${s['end_time'] ?? '-'}',
                 ),
-                onTap: widget.onOpenSchedule,
+                onTap: () {
+                  final target = ScheduleTarget.fromDashboard(s);
+                  if (target != null && widget.onOpenScheduleCard != null) {
+                    widget.onOpenScheduleCard!(target);
+                  } else {
+                    widget.onOpenSchedule();
+                  }
+                },
               ),
             ),
           ),

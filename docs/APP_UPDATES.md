@@ -1,5 +1,32 @@
 ﻿# Pembaruan APK dari dalam aplikasi
 
+## Rilis 1.0.1 (build 13)
+
+- Persetujuan halaqoh menampilkan perubahan jumlah anggota, santri yang masuk
+  dan keluar, serta peringatan perpindahan dari guru lain. Rincian lengkap dapat
+  dibuka sebelum mengambil keputusan. Perhitungan mengikuti jenis pengajuan:
+  tambah, ganti daftar, hapus satu, atau hapus semua.
+- Form absensi santri dan guru memakai header hijau, pilihan status berikon,
+  serta ringkasan jumlah hadir/izin/sakit/alpa. Berlaku pada pelajaran dan halaqoh.
+- Kartu jadwal hari ini di dashboard membuka modul dan kartu jadwal yang dipilih
+  di bagian atas, termasuk saat memakai salinan jadwal offline.
+- Filter periode dashboard memakai nama bulan Indonesia, misalnya November/2026.
+- Analisis Flutter bersih dan 94 tes otomatis lulus. Pengujian instalasi langsung
+  dari build 12 ke 13 pada ponsel tetap diperlukan setelah publikasi opsional.
+
+Catatan rilis untuk dashboard web:
+
+> Tampilan persetujuan halaqoh dan form absensi diperbarui. Perubahan anggota
+> lebih mudah ditinjau, status absensi lebih jelas, dan kartu jadwal hari ini
+> langsung membuka jadwal terkait. Filter dashboard menggunakan bulan/tahun.
+
+Unggah APK build 13 sebagai draft, periksa versi 1.0.1, lalu publikasikan dengan
+minimum versi 0 untuk uji pembaruan opsional pada satu ponsel sebelum distribusi
+lebih luas. Pastikan akun, jadwal offline dan antrean absensi tetap tersedia
+setelah pemasangan tanpa uninstall.
+
+## Instalasi awal
+
 Updater ada mulai build 12. Build 11 dan sebelumnya perlu diperbarui secara
 manual satu kali tanpa menghapus aplikasi/data. Rilis berikutnya dapat dikelola
 oleh Super Admin dari web.
