@@ -1,5 +1,16 @@
 ﻿# Pembaruan APK dari dalam aplikasi
 
+## Rilis 1.0.3 (build 15)
+
+- Pemilik penugasan halaqoh memiliki tombol Tambah Santri dan Hapus Santri.
+- Perubahan anggota diajukan kepada admin; anggota dan data santri tetap aman
+  sampai pengajuan disetujui. Pengajuan pending mencegah pengajuan berikutnya.
+- Guru pendamping tetap dipertahankan saat mengirim pengajuan.
+- Seluruh 100 tes Flutter lulus sebelum build ini dibuat.
+
+Gunakan kunci penandatanganan yang sama dengan build sebelumnya dan instal
+sebagai pembaruan tanpa uninstall. Unggah sebagai rilis opsional terlebih dahulu.
+
 ## Rilis 1.0.2 (build 14)
 
 Kode setelah build 14: kartu halaqoh milik pengguna menyediakan tombol terpisah
