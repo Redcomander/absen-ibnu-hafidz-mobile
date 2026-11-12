@@ -12,6 +12,9 @@ import '../../core/network/offline_cache_store.dart';
 import '../../core/theme/section_header.dart';
 import '../auth/auth_controller.dart';
 import 'saved_report_filters.dart';
+import '../students/attendance_insights.dart';
+import '../students/students_screen.dart';
+import '../../core/access/access.dart';
 import '../halaqoh/halaqoh_reports_screen.dart';
 import '../settings/app_settings_controller.dart';
 
@@ -753,6 +756,29 @@ class _StatsScreenState extends State<StatsScreen> {
                 ],
               ),
               const SizedBox(height: 12),
+              for (final entry in {
+                'Sakit': 'sakit_students',
+                'Izin': 'izin_students',
+                'Alpha': 'alpa_students',
+              }.entries)
+                StudentStatusCard(
+                  key: ValueKey('$_type-$_statsQueryKey-${entry.key}'),
+                  status: entry.key,
+                  records: _studentStats[entry.value] as List? ?? const [],
+                  onStudent:
+                      hasAccess(
+                        context.read<AuthController>().user,
+                        'students.view',
+                      )
+                      ? (id) => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                StudentProgressScreen(studentId: id),
+                          ),
+                        )
+                      : null,
+                ),
               _buildHistoryCard(),
               const SizedBox(height: 16),
             ],

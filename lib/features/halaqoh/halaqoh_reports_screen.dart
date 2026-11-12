@@ -10,6 +10,9 @@ import '../../core/network/offline_cache_store.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_controller.dart';
 import '../stats/saved_report_filters.dart';
+import '../students/attendance_insights.dart';
+import '../students/students_screen.dart';
+import '../../core/access/access.dart';
 
 Map<String, dynamic> _map(dynamic value) =>
     value is Map ? Map<String, dynamic>.from(value) : {};
@@ -420,29 +423,61 @@ class _HalaqohReportsScreenState extends State<HalaqohReportsScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            TextField(
-              key: ValueKey('report-search-$_scope'),
-              decoration: const InputDecoration(
-                labelText: 'Cari pada hasil rekapan',
-                prefixIcon: Icon(Icons.search),
+            if (!student || _data['student_details'] is! Map)
+              TextField(
+                key: ValueKey('report-search-$_scope'),
+                decoration: const InputDecoration(
+                  labelText: 'Cari pada hasil rekapan',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (value) =>
+                    setState(() => _search = value.toLowerCase().trim()),
               ),
-              onChanged: (value) =>
-                  setState(() => _search = value.toLowerCase().trim()),
-            ),
             const SizedBox(height: 14),
             if (student) ...[
-              for (final entry in {
-                'izinStudents': 'Santri Izin',
-                'sakitStudents': 'Santri Sakit',
-                'alpaStudents': 'Santri Alpa',
-              }.entries)
-                _table(
-                  entry.value,
-                  ['Nama Santri'],
-                  (_data[entry.key] as List? ?? [])
-                      .map((name) => [_text(name)])
-                      .toList(),
+              if (_data['student_details'] is Map)
+                for (final entry in {
+                  'Sakit': 'sakit',
+                  'Izin': 'izin',
+                  'Alpha': 'alpa',
+                }.entries)
+                  StudentStatusCard(
+                    key: ValueKey('$_query-${entry.key}'),
+                    status: entry.key,
+                    records:
+                        _map(_data['student_details'])[entry.value] as List? ??
+                        const [],
+                    onStudent:
+                        hasAccess(
+                          context.read<AuthController>().user,
+                          'students.view',
+                        )
+                        ? (id) => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  StudentProgressScreen(studentId: id),
+                            ),
+                          )
+                        : null,
+                  )
+              else ...[
+                const Text(
+                  'Jumlah kejadian per santri memerlukan backend terbaru. Daftar berikut hanya menampilkan nama.',
                 ),
+                for (final entry in {
+                  'izinStudents': 'Santri Izin',
+                  'sakitStudents': 'Santri Sakit',
+                  'alpaStudents': 'Santri Alpa',
+                }.entries)
+                  _table(
+                    entry.value,
+                    ['Nama Santri'],
+                    (_data[entry.key] as List? ?? [])
+                        .map((name) => [_text(name)])
+                        .toList(),
+                  ),
+              ],
             ] else ...[
               Text('Total penggantian: ${_data['substitutionCount'] ?? 0}'),
               const SizedBox(height: 12),

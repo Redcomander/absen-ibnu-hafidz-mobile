@@ -375,6 +375,7 @@ class ApiClient {
           r'^/halaqoh/(attendance|teacher-attendance)/\d+$',
         ).hasMatch(path) ||
         path == '/dashboard/stats' ||
+        path == '/students/attendance-signals' ||
         RegExp(r'^/students/\d+/progress$').hasMatch(path) ||
         path == '/schedules' ||
         path == '/attendance' ||
