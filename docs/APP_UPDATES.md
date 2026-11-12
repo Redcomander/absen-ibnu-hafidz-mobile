@@ -1,5 +1,25 @@
 ﻿# Pembaruan APK dari dalam aplikasi
 
+## Rilis 1.0.2 (build 14)
+
+Kode setelah build 14: kartu halaqoh milik pengguna menyediakan tombol terpisah
+Tambah Santri / Hapus Santri. Keduanya mengirim pengajuan untuk persetujuan admin,
+bukan mengubah anggota secara langsung. Perubahan ini memerlukan APK berikutnya;
+APK build 14 yang sudah dibuat belum memuat tombol terpisah tersebut.
+
+- Rekapan sakit, izin, dan alpha menampilkan jumlah santri, frekuensi per nama,
+  serta pencarian terpisah untuk setiap status.
+- Profil perkembangan menampilkan grafik komposisi, tren bulanan interaktif,
+  filter modul, dan filter catatan terbaru.
+- Peringkat alpha, izin, dan sakit mengikuti modul serta periode yang dipilih.
+- Beranda diperbarui dengan tema hijau–emas dan animasi pembuka ringan.
+- Analisis Flutter bersih dan 99 tes otomatis lulus sebelum build.
+
+Deploy backend minimal commit `c88c472` agar peringkat per status dan frekuensi
+halaqoh tersedia. Tidak memerlukan migrasi database. Gunakan sertifikat yang
+sama dengan build 13, unggah sebagai draft dan uji pembaruan opsional pada
+ponsel tanpa uninstall untuk memeriksa akun, jadwal offline, serta antrean lokal.
+
 ## Rilis 1.0.1 (build 13)
 
 - Persetujuan halaqoh menampilkan perubahan jumlah anggota, santri yang masuk

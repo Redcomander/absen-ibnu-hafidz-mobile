@@ -32,6 +32,68 @@ void main() {
     );
   });
 
+  testWidgets(
+    'assigned users can open add and remove without attendance permissions',
+    (tester) async {
+      final actions = <bool>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HalaqohMembershipActions(
+              user: const {
+                'id': '7',
+                'roles': [
+                  {'name': 'staff'},
+                ],
+              },
+              teacherId: 7,
+              onOpen: actions.add,
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Tambah Santri'));
+      await tester.tap(find.text('Hapus Santri'));
+      expect(actions, [true, false]);
+      expect(find.textContaining('menunggu persetujuan admin'), findsOneWidget);
+      for (final user in [
+        {
+          'id': 8,
+          'roles': [
+            {'name': 'guru'},
+          ],
+        },
+        {
+          'id': 8,
+          'roles': [
+            {'name': 'tim_presensi'},
+          ],
+        },
+        {
+          'id': 7,
+          'roles': [
+            {'name': 'admin'},
+          ],
+        },
+      ]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HalaqohMembershipActions(
+                user: user,
+                teacherId: 7,
+                onOpen: actions.add,
+              ),
+            ),
+          ),
+        );
+        expect(find.text('Tambah Santri'), findsNothing);
+        expect(find.text('Hapus Santri'), findsNothing);
+      }
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   Future<void> settle(WidgetTester tester) async {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 60)),

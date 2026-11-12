@@ -1230,23 +1230,21 @@ class _HalaqohScreenState extends State<HalaqohScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            if (canRequestHalaqohMembership(
-              context.read<AuthController>().user,
-              teacherId,
-            ))
-              OutlinedButton.icon(
-                icon: const Icon(Icons.group_add_outlined),
-                label: const Text('Ajukan perubahan santri'),
-                onPressed: () async {
-                  await Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) =>
-                          HalaqohMembershipScreen(teacherId: teacherId),
+            HalaqohMembershipActions(
+              user: context.read<AuthController>().user,
+              teacherId: teacherId,
+              onOpen: (adding) async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => HalaqohMembershipScreen(
+                      teacherId: teacherId,
+                      focusStudentSearch: adding,
                     ),
-                  );
-                  if (mounted) await _loadAssignments();
-                },
-              ),
+                  ),
+                );
+                if (mounted) await _loadAssignments();
+              },
+            ),
             if (studentBadges.isNotEmpty) ...[
               const Text(
                 'Status Absen Santri',

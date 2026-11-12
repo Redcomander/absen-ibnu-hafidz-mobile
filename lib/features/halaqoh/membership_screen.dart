@@ -22,9 +22,78 @@ bool canRequestHalaqohMembership(Map<String, dynamic>? user, int teacherId) {
       );
 }
 
+/// Assignment ownership grants requests, independently of attendance permissions.
+/// Helpers/substitutes must never gain membership editing for someone else's group.
+class HalaqohMembershipActions extends StatelessWidget {
+  const HalaqohMembershipActions({
+    super.key,
+    required this.user,
+    required this.teacherId,
+    required this.onOpen,
+  });
+  final Map<String, dynamic>? user;
+  final int teacherId;
+  final ValueChanged<bool> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!canRequestHalaqohMembership(user, teacherId)) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: .06),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Kelola anggota halaqoh Anda',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Ajukan tambah atau hapus anggota. Perubahan menunggu persetujuan admin dan tidak menghapus data santri.',
+                style: TextStyle(fontSize: 12, height: 1.5),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: () => onOpen(true),
+                    icon: const Icon(Icons.person_add_alt_1_outlined),
+                    label: const Text('Tambah Santri'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => onOpen(false),
+                    icon: const Icon(Icons.person_remove_outlined),
+                    label: const Text('Hapus Santri'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class HalaqohMembershipScreen extends StatefulWidget {
   final int teacherId;
-  const HalaqohMembershipScreen({super.key, required this.teacherId});
+  final bool focusStudentSearch;
+  const HalaqohMembershipScreen({
+    super.key,
+    required this.teacherId,
+    this.focusStudentSearch = false,
+  });
 
   @override
   State<HalaqohMembershipScreen> createState() =>
@@ -33,6 +102,8 @@ class HalaqohMembershipScreen extends StatefulWidget {
 
 class _HalaqohMembershipScreenState extends State<HalaqohMembershipScreen> {
   final _search = TextEditingController();
+  final _searchFocus = FocusNode();
+  bool _initialFocusHandled = false;
   final _selected = <int, Map<String, dynamic>>{};
   final _original = <int>{};
   List<Map<String, dynamic>> _requests = [], _options = [];
@@ -138,6 +209,17 @@ class _HalaqohMembershipScreenState extends State<HalaqohMembershipScreen> {
         _requests = results[1] as List<Map<String, dynamic>>;
         _ready = true;
       });
+      if (widget.focusStudentSearch && !_initialFocusHandled && !_pending) {
+        _initialFocusHandled = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (!mounted || !_ready || _pending) return;
+          final searchContext = _searchFocus.context;
+          if (searchContext != null) {
+            await Scrollable.ensureVisible(searchContext, alignment: .2);
+            if (mounted) _searchFocus.requestFocus();
+          }
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _error = _message(e));
     } finally {
@@ -287,6 +369,7 @@ class _HalaqohMembershipScreenState extends State<HalaqohMembershipScreen> {
     _debounce?.cancel();
     _searchVersion++;
     _search.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -412,6 +495,7 @@ class _HalaqohMembershipScreenState extends State<HalaqohMembershipScreen> {
                     const SizedBox(height: 12),
                     TextField(
                       controller: _search,
+                      focusNode: _searchFocus,
                       enabled: !_saving,
                       decoration: const InputDecoration(
                         labelText: 'Cari santri untuk ditambahkan',
